@@ -245,81 +245,100 @@ CHECKLIST = {
 styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
-def generar_pdf(path, inspector, fecha, filas, promedio, semaforo):
-    doc = SimpleDocTemplate(path, pagesize=letter)
+def generar_pdf(ruta_pdf, inspector, fecha, filas):
+    doc = SimpleDocTemplate(
+        ruta_pdf,
+        pagesize=letter,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=30,
+        bottomMargin=30
+    )
+
+    styles = getSampleStyleSheet()
     elementos = []
 
-    estilos = getSampleStyleSheet()
+    # =========================
+    # CALCULOS
+    # =========================
+    puntajes = [f["puntaje"] for f in filas]
+    promedio = round(sum(puntajes) / len(puntajes), 2)
 
-    # TÍTULO
-    elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", estilos["Title"]))
+    if promedio >= 4:
+        semaforo = "🟢 VERDE"
+    elif promedio >= 3:
+        semaforo = "🟡 AMARILLO"
+    else:
+        semaforo = "🔴 ROJO"
+
+    # =========================
+    # ENCABEZADO
+    # =========================
+    elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", styles["Title"]))
     elementos.append(Spacer(1, 12))
 
-    # DATOS GENERALES
-    elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", estilos["Normal"]))
-    elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", estilos["Normal"]))
-    elementos.append(Paragraph(f"<b>Promedio:</b> {promedio}", estilos["Normal"]))
-    elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilos["Normal"]))
-    elementos.append(Spacer(1, 14))
+    elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
+    elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
+    elementos.append(Paragraph(f"<b>Promedio:</b> {promedio}", styles["Normal"]))
+    elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", styles["Normal"]))
+    elementos.append(Spacer(1, 16))
 
-    # TABLAdata = [["Sección", "Ítem", "Puntaje", "Observaciones"]]
+    # =========================
+    # TABLA
+    # =========================
+    data = [["Sección", "Ítem", "Puntaje", "Observaciones"]]
+    spans = []
 
-spans = []
-fila_inicio = 1
-seccion_actual = filas[0]["seccion"]
+    fila_inicio = 1
+    seccion_actual = filas[0]["seccion"]
 
-for i, f in enumerate(filas):
-    data.append([
-        f["seccion"],
-        f["item"],
-        str(f["puntaje"]),
-        f["obs"]
-    ])
+    for i, f in enumerate(filas):
+        data.append([
+            f["seccion"],
+            f["item"],
+            str(f["puntaje"]),
+            f["obs"]
+        ])
 
-    if i + 1 < len(filas) and filas[i + 1]["seccion"] != seccion_actual:
-        fila_fin = i + 1
-        spans.append((0, fila_inicio, 0, fila_fin))
-        fila_inicio = fila_fin + 1
-        seccion_actual = filas[i + 1]["seccion"]
+        if i + 1 < len(filas) and filas[i + 1]["seccion"] != seccion_actual:
+            fila_fin = i + 1
+            spans.append((0, fila_inicio, 0, fila_fin))
+            fila_inicio = fila_fin + 1
+            seccion_actual = filas[i + 1]["seccion"]
 
-spans.append((0, fila_inicio, 0, len(filas)))
+    spans.append((0, fila_inicio, 0, len(filas)))
 
-tabla = Table(
-    data,
-    repeatRows=1,
-    colWidths=[120, 240, 60, 170]
-)
+    tabla = Table(
+        data,
+        repeatRows=1,
+        colWidths=[120, 240, 60, 170]
+    )
 
-style = [
-    ("GRID", (0,0), (-1,-1), 1, colors.black),
-    ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#E0E0E0")),
-    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+    estilo = [
+        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E0E0E0")),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
 
-    ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ("ALIGN", (0,0), (0,-1), "CENTER"),
-    ("ALIGN", (2,1), (2,-1), "CENTER"),
-    ("WORDWRAP", (0,0), (-1,-1), "CJK"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+        ("ALIGN", (2, 1), (2, -1), "CENTER"),
+        ("WORDWRAP", (0, 0), (-1, -1), "CJK"),
 
-    ("LEFTPADDING", (0,0), (-1,-1), 6),
-    ("RIGHTPADDING", (0,0), (-1,-1), 6),
-    ("TOPPADDING", (0,0), (-1,-1), 6),
-    ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-]
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]
 
-for s in spans:
-    style.append(("SPAN", (s[0], s[1]), (s[2], s[3])))
+    for s in spans:
+        estilo.append(("SPAN", (s[0], s[1]), (s[2], s[3])))
 
-tabla.setStyle(TableStyle(style))
-elementos.append(tabla)
-elementos.append(Spacer(1, 14))
+    tabla.setStyle(TableStyle(estilo))
+    elementos.append(tabla)
 
-    # FOTOS (solo las que existan)
-    for f in filas:
-        if f["foto"]:
-            elementos.append(Paragraph(f"<b>{f['item']}</b>", estilos["Normal"]))
-            elementos.append(Image(f["foto"], width=220, height=160))
-            elementos.append(Spacer(1, 12))
-
+    # =========================
+    # GENERAR PDF
+    # =========================
     doc.build(elementos)
 
 # ---------------- FORMULARIO ----------------
