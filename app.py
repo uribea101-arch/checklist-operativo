@@ -262,47 +262,56 @@ def generar_pdf(path, inspector, fecha, filas, promedio, semaforo):
     elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilos["Normal"]))
     elementos.append(Spacer(1, 14))
 
-    # TABLA
-    data = [["Sección", "Ítem", "Puntaje", "Observaciones"]]
+    # TABLAdata = [["Sección", "Ítem", "Puntaje", "Observaciones"]]
 
-    for f in filas:
-        data.append([
-            f["seccion"],
-            f["item"],
-            str(f["puntaje"]),
-            f["obs"]
-        ])
+spans = []
+fila_inicio = 1
+seccion_actual = filas[0]["seccion"]
 
-    tabla = Table(
-        data,
-        repeatRows=1,
-        colWidths=[110, 230, 60, 155]
-    )
+for i, f in enumerate(filas):
+    data.append([
+        f["seccion"],
+        f["item"],
+        str(f["puntaje"]),
+        f["obs"]
+    ])
 
-    tabla.setStyle(TableStyle([
-        # BORDES
-        ("GRID", (0,0), (-1,-1), 1, colors.black),
+    if i + 1 < len(filas) and filas[i + 1]["seccion"] != seccion_actual:
+        fila_fin = i + 1
+        spans.append((0, fila_inicio, 0, fila_fin))
+        fila_inicio = fila_fin + 1
+        seccion_actual = filas[i + 1]["seccion"]
 
-        # ENCABEZADO
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#E0E0E0")),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+spans.append((0, fila_inicio, 0, len(filas)))
 
-        # AJUSTE DE TEXTO
-        ("WORDWRAP", (0,0), (-1,-1), "CJK"),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
+tabla = Table(
+    data,
+    repeatRows=1,
+    colWidths=[120, 240, 60, 170]
+)
 
-        # ALINEACIONES
-        ("ALIGN", (2,1), (2,-1), "CENTER"),
+style = [
+    ("GRID", (0,0), (-1,-1), 1, colors.black),
+    ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#E0E0E0")),
+    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
 
-        # ESPACIADO INTERNO
-        ("LEFTPADDING", (0,0), (-1,-1), 6),
-        ("RIGHTPADDING", (0,0), (-1,-1), 6),
-        ("TOPPADDING", (0,0), (-1,-1), 6),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-    ]))
+    ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+    ("ALIGN", (0,0), (0,-1), "CENTER"),
+    ("ALIGN", (2,1), (2,-1), "CENTER"),
+    ("WORDWRAP", (0,0), (-1,-1), "CJK"),
 
-    elementos.append(tabla)
-    elementos.append(Spacer(1, 14))
+    ("LEFTPADDING", (0,0), (-1,-1), 6),
+    ("RIGHTPADDING", (0,0), (-1,-1), 6),
+    ("TOPPADDING", (0,0), (-1,-1), 6),
+    ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+]
+
+for s in spans:
+    style.append(("SPAN", (s[0], s[1]), (s[2], s[3])))
+
+tabla.setStyle(TableStyle(style))
+elementos.append(tabla)
+elementos.append(Spacer(1, 14))
 
     # FOTOS (solo las que existan)
     for f in filas:
