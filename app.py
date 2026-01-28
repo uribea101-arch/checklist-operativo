@@ -9,7 +9,7 @@ from reportlab.lib import colors
 
 # ---------------- CONFIGURACIÓN ----------------
 st.set_page_config(page_title="Checklist Operativo", layout="wide")
-st.title("📋 Checklist Operativo")
+st.title("📋 Checklist Básicos del Servicio")
 
 os.makedirs("fotos", exist_ok=True)
 os.makedirs("pdfs", exist_ok=True)
