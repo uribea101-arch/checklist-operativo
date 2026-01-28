@@ -245,7 +245,7 @@ CHECKLIST = {
 styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
-def generar_pdf(ruta_pdf, inspector, fecha, filas):
+def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -264,31 +264,46 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
 
     elementos = []
 
-    # -------- TÍTULO --------
+    # ================== ENCABEZADO ==================
     elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", styles["Title"]))
-    elementos.append(Spacer(1, 12))
+    elementos.append(Spacer(1, 10))
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
-    elementos.append(Spacer(1, 12))
+    elementos.append(Spacer(1, 10))
 
-    # -------- ESTILOS --------
+    # ================== RESULTADO ==================
+    color_semaforo = colors.green if "VERDE" in semaforo else \
+                     colors.orange if "AMARILLO" in semaforo else colors.red
+
+    estilo_resultado = ParagraphStyle(
+        name="Resultado",
+        fontSize=10,
+        leading=12,
+        textColor=color_semaforo
+    )
+
+    elementos.append(Paragraph(f"<b>Promedio General:</b> {promedio}", styles["Normal"]))
+    elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilo_resultado))
+    elementos.append(Spacer(1, 14))
+
+    # ================== ESTILOS TABLA ==================
     estilo_normal = ParagraphStyle(
         name="NormalTabla",
         fontSize=8,
         leading=10,
-        wordWrap="CJK"   # 🔑 AJUSTE DE TEXTO
+        wordWrap="CJK"
     )
 
     estilo_seccion = ParagraphStyle(
         name="SeccionTabla",
-        fontSize=8,
-        leading=10,
+        fontSize=9,
+        leading=11,
         alignment=1,
         wordWrap="CJK",
         backColor=colors.lightgrey
     )
 
-    # -------- CABECERA --------
+    # ================== CABECERA ==================
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
@@ -299,7 +314,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
     ultima_seccion = None
     inicio_merge = 1
 
-    # -------- FILAS --------
+    # ================== FILAS ==================
     for f in filas:
         seccion = f["seccion"]
         item = Paragraph(f["item"], estilo_normal)
@@ -307,21 +322,12 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
         obs = Paragraph(f["obs"] if f["obs"] else "-", estilo_normal)
 
         if seccion != ultima_seccion:
-            if ultima_seccion is not None:
-                data.append([
-                    Paragraph(seccion, estilo_seccion),
-                    item,
-                    cal,
-                    obs
-                ])
-                inicio_merge = len(data) - 1
-            else:
-                data.append([
-                    Paragraph(seccion, estilo_seccion),
-                    item,
-                    cal,
-                    obs
-                ])
+            data.append([
+                Paragraph(seccion, estilo_seccion),
+                item,
+                cal,
+                obs
+            ])
             ultima_seccion = seccion
         else:
             data.append([
@@ -331,7 +337,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
                 obs
             ])
 
-    # -------- TABLA --------
+    # ================== TABLA ==================
     tabla = Table(
         data,
         colWidths=[95, 190, 70, 170],
@@ -343,11 +349,10 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
     seccion_actual = None
 
     for i in range(1, len(data)):
-        texto = data[i][0]
-        if texto != "":
+        if data[i][0] != "":
             if seccion_actual is not None:
                 spans.append(("SPAN", (0, fila_inicio), (0, i-1)))
-            seccion_actual = texto
+            seccion_actual = data[i][0]
             fila_inicio = i
 
     spans.append(("SPAN", (0, fila_inicio), (0, len(data)-1)))
@@ -355,14 +360,34 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
     tabla.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
+
+        # Centrado vertical SOLO sección
+        ("VALIGN", (0,1), (0,-1), "MIDDLE"),
+        ("VALIGN", (1,1), (-1,-1), "TOP"),
+
         ("ALIGN", (2,1), (2,-1), "CENTER"),
     ] + spans))
 
     elementos.append(tabla)
 
-    # -------- FOTOS --------
-    elementos.append(Spacer(1, 14))
+    # ================== PUNTOS CRÍTICOS ==================
+    elementos.append(Spacer(1, 18))
+    elementos.append(Paragraph("<b>PUNTOS CRÍTICOS A TRABAJAR (CALIFICACIÓN BAJA)</b>", styles["Heading2"]))
+    elementos.append(Spacer(1, 8))
+
+    hay_criticos = False
+
+    for f in filas:
+        if f["puntaje"] == 1:
+            hay_criticos = True
+            texto = f"- {f['seccion']} | {f['item']}"
+            elementos.append(Paragraph(texto, styles["Normal"]))
+
+    if not hay_criticos:
+        elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
+
+    # ================== FOTOS ==================
+    elementos.append(Spacer(1, 16))
     elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
@@ -372,6 +397,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
             elementos.append(Image(f["foto"], width=180, height=130))
             elementos.append(Spacer(1, 10))
 
+    # ================== GENERAR PDF ==================
     doc.build(elementos)
     
 # ---------------- FORMULARIO ----------------
