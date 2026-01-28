@@ -249,26 +249,52 @@ def generar_pdf(path, inspector, fecha, filas, promedio, semaforo):
     doc = SimpleDocTemplate(path, pagesize=letter)
     elementos = []
 
-    elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", styles["Title"]))
-    elementos.append(Spacer(1, 12))
-    elementos.append(Paragraph(f"Inspector: {inspector}", styles["Normal"]))
-    elementos.append(Paragraph(f"Fecha: {fecha}", styles["Normal"]))
-    elementos.append(Paragraph(f"Promedio: {promedio}", styles["Normal"]))
-    elementos.append(Paragraph(f"Semáforo: {semaforo}", styles["Normal"]))
+    estilos = getSampleStyleSheet()
+
+    # TÍTULO
+    elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", estilos["Title"]))
     elementos.append(Spacer(1, 12))
 
+    # DATOS GENERALES
+    elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", estilos["Normal"]))
+    elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", estilos["Normal"]))
+    elementos.append(Paragraph(f"<b>Promedio:</b> {promedio}", estilos["Normal"]))
+    elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilos["Normal"]))
+    elementos.append(Spacer(1, 14))
+
+    # TABLA
     data = [["Sección", "Ítem", "Puntaje", "Observaciones"]]
-    for f in filas:
-        data.append([f["seccion"], f["item"], f["puntaje"], f["obs"]])
 
-    tabla = Table(data, repeatRows=1, colWidths=[120, 180, 80, 150])
+    for f in filas:
+        data.append([
+            f["seccion"],
+            f["item"],
+            str(f["puntaje"]),
+            f["obs"]
+        ])
+
+    tabla = Table(
+        data,
+        repeatRows=1,
+        colWidths=[110, 230, 60, 155]
+    )
 
     tabla.setStyle(TableStyle([
+        # BORDES
         ("GRID", (0,0), (-1,-1), 1, colors.black),
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#D9D9D9")),
+
+        # ENCABEZADO
+        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#E0E0E0")),
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+
+        # AJUSTE DE TEXTO
+        ("WORDWRAP", (0,0), (-1,-1), "CJK"),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+
+        # ALINEACIONES
         ("ALIGN", (2,1), (2,-1), "CENTER"),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+
+        # ESPACIADO INTERNO
         ("LEFTPADDING", (0,0), (-1,-1), 6),
         ("RIGHTPADDING", (0,0), (-1,-1), 6),
         ("TOPPADDING", (0,0), (-1,-1), 6),
@@ -276,16 +302,16 @@ def generar_pdf(path, inspector, fecha, filas, promedio, semaforo):
     ]))
 
     elementos.append(tabla)
-    elementos.append(Spacer(1, 12))
+    elementos.append(Spacer(1, 14))
 
+    # FOTOS (solo las que existan)
     for f in filas:
         if f["foto"]:
-            elementos.append(Paragraph(f"<b>{f['item']}</b>", styles["Normal"]))
-            elementos.append(Image(f["foto"], 200, 150))
-            elementos.append(Spacer(1, 10))
+            elementos.append(Paragraph(f"<b>{f['item']}</b>", estilos["Normal"]))
+            elementos.append(Image(f["foto"], width=220, height=160))
+            elementos.append(Spacer(1, 12))
 
     doc.build(elementos)
-
 
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
