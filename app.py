@@ -22,7 +22,7 @@ CALIFICACIONES = {
 
 CHECKLIST = {
 
-    "CARLOS": [
+    "PUNTOS DE INFORMACIÓN PISO 1": [
         "Estado y aseo sillas de rueda",
         "Estado y aseo coches de bebé",
         "Estado y aseo mobiliario",
