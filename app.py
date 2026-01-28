@@ -289,7 +289,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
     # -------- CABECERA TABLA --------
     data = [
         [
-            Paragraph("<b>SECCIÓN</b>", estilo_normal),
+            Paragraph("<b>SECCION</b>", estilo_normal),
             Paragraph("<b>ITEM</b>", estilo_normal),
             Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
             Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
@@ -301,7 +301,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
 
     # -------- FILAS --------
     for f in filas:
-        seccion = f["Sección"]
+        seccion = f["Seccion"]
         item = Paragraph(f["Tarea"], estilo_normal)
         cal = Paragraph(str(f["Calificación"]), estilo_normal)
         obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
@@ -358,7 +358,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
 
     for f in filas:
         if f["Foto"]:
-            elementos.append(Paragraph(f["Sección"] + " - " + f["Tarea"], styles["Normal"]))
+            elementos.append(Paragraph(f["Seccion"] + " - " + f["Tarea"], styles["Normal"]))
             elementos.append(Image(f["Foto"], width=180, height=130))
             elementos.append(Spacer(1, 10))
 
