@@ -405,7 +405,7 @@ if guardar and not error:
     st.write(f"**Promedio:** {promedio}")
 
     pdf_path = f"pdfs/Checklist_{fecha}.pdf"
-    generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
+    generar_pdf(pdf_path, inspector, fecha, filas)
 
     with open(pdf_path, "rb") as f:
         st.download_button("📄 Descargar PDF", f, file_name="Checklist.pdf")
