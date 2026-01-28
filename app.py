@@ -246,6 +246,13 @@ styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
 def generar_pdf(ruta_pdf, inspector, fecha, filas):
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    styles = getSampleStyleSheet()
+
     doc = SimpleDocTemplate(
         ruta_pdf,
         pagesize=letter,
@@ -255,92 +262,109 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
         bottomMargin=30
     )
 
-    styles = getSampleStyleSheet()
     elementos = []
 
-    # =========================
-    # CALCULOS
-    # =========================
-    puntajes = [f["puntaje"] for f in filas]
-    promedio = round(sum(puntajes) / len(puntajes), 2)
-
-    if promedio >= 4:
-        semaforo = "🟢 VERDE"
-    elif promedio >= 3:
-        semaforo = "🟡 AMARILLO"
-    else:
-        semaforo = "🔴 ROJO"
-
-    # =========================
-    # ENCABEZADO
-    # =========================
+    # -------- TÍTULO --------
     elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", styles["Title"]))
     elementos.append(Spacer(1, 12))
 
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
-    elementos.append(Paragraph(f"<b>Promedio:</b> {promedio}", styles["Normal"]))
-    elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", styles["Normal"]))
-    elementos.append(Spacer(1, 16))
+    elementos.append(Spacer(1, 12))
 
-    # =========================
-    # TABLA
-    # =========================
-    data = [["Sección", "Ítem", "Puntaje", "Observaciones"]]
-    spans = []
-
-    fila_inicio = 1
-    seccion_actual = filas[0]["seccion"]
-
-    for i, f in enumerate(filas):
-        data.append([
-            f["seccion"],
-            f["item"],
-            str(f["puntaje"]),
-            f["obs"]
-        ])
-
-        if i + 1 < len(filas) and filas[i + 1]["seccion"] != seccion_actual:
-            fila_fin = i + 1
-            spans.append((0, fila_inicio, 0, fila_fin))
-            fila_inicio = fila_fin + 1
-            seccion_actual = filas[i + 1]["seccion"]
-
-    spans.append((0, fila_inicio, 0, len(filas)))
-
-    tabla = Table(
-        data,
-        repeatRows=1,
-        colWidths=[120, 240, 60, 170]
+    # -------- ESTILOS TABLA --------
+    estilo_normal = ParagraphStyle(
+        name="NormalTabla",
+        fontSize=8,
+        leading=10
     )
 
-    estilo = [
-        ("GRID", (0, 0), (-1, -1), 1, colors.black),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E0E0E0")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+    estilo_seccion = ParagraphStyle(
+        name="SeccionTabla",
+        fontSize=8,
+        leading=10,
+        alignment=1  # Centrado
+    )
 
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (0, -1), "CENTER"),
-        ("ALIGN", (2, 1), (2, -1), "CENTER"),
-        ("WORDWRAP", (0, 0), (-1, -1), "CJK"),
-
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    # -------- CABECERA TABLA --------
+    data = [
+        [
+            Paragraph("<b>SECCIÓN</b>", estilo_normal),
+            Paragraph("<b>ITEM</b>", estilo_normal),
+            Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
+            Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
+        ]
     ]
 
-    for s in spans:
-        estilo.append(("SPAN", (s[0], s[1]), (s[2], s[3])))
+    ultima_seccion = None
+    inicio_merge = 1
 
-    tabla.setStyle(TableStyle(estilo))
+    # -------- FILAS --------
+    for f in filas:
+        seccion = f["Sección"]
+        item = Paragraph(f["Tarea"], estilo_normal)
+        cal = Paragraph(str(f["Calificación"]), estilo_normal)
+        obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
+
+        if seccion != ultima_seccion:
+            if ultima_seccion is not None:
+                data_span_fin = len(data) - 1
+                tabla_temp = Table(data)
+                tabla_temp.setStyle(TableStyle([
+                    ("SPAN", (0, inicio_merge), (0, data_span_fin))
+                ]))
+                inicio_merge = len(data)
+
+            data.append([
+                Paragraph(seccion, estilo_seccion),
+                item,
+                cal,
+                obs
+            ])
+            ultima_seccion = seccion
+        else:
+            data.append([
+                "",
+                item,
+                cal,
+                obs
+            ])
+
+    # -------- TABLA FINAL --------
+    tabla = Table(
+        data,
+        colWidths=[90, 180, 70, 180],
+        repeatRows=1
+    )
+
+    tabla.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("ALIGN", (2,1), (2,-1), "CENTER"),
+    ]))
+
+    # Combinar última sección
+    tabla.setStyle(TableStyle([
+        ("SPAN", (0, inicio_merge), (0, len(data)-1))
+    ]))
+
     elementos.append(tabla)
 
-    # =========================
-    # GENERAR PDF
-    # =========================
-    doc.build(elementos)
+    # -------- FOTOS --------
+    elementos.append(Spacer(1, 12))
+    elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
+    elementos.append(Spacer(1, 8))
 
+    for f in filas:
+        if f["Foto"]:
+            elementos.append(Paragraph(f["Sección"] + " - " + f["Tarea"], styles["Normal"]))
+            elementos.append(Image(f["Foto"], width=180, height=130))
+            elementos.append(Spacer(1, 10))
+
+    # -------- GENERAR PDF --------
+    doc.build(elementos)
+    
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
     inspector = st.text_input("Nombre del inspector")
