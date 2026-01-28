@@ -281,7 +281,7 @@ tabla.setStyle(TableStyle([
     ("TOPPADDING", (0,0), (-1,-1), 6),
     ("BOTTOMPADDING", (0,0), (-1,-1), 6),
 ]))
-    elementos.append(tabla)
+elementos.append(tabla)
 
     elementos.append(Spacer(1, 12))
     for f in filas:
