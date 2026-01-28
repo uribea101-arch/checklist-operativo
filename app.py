@@ -267,60 +267,61 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
     # -------- TÍTULO --------
     elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", styles["Title"]))
     elementos.append(Spacer(1, 12))
-
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
     elementos.append(Spacer(1, 12))
 
-    # -------- ESTILOS TABLA --------
+    # -------- ESTILOS --------
     estilo_normal = ParagraphStyle(
         name="NormalTabla",
         fontSize=8,
-        leading=10
+        leading=10,
+        wordWrap="CJK"   # 🔑 AJUSTE DE TEXTO
     )
 
     estilo_seccion = ParagraphStyle(
         name="SeccionTabla",
         fontSize=8,
         leading=10,
-        alignment=1  # Centrado
+        alignment=1,
+        wordWrap="CJK",
+        backColor=colors.lightgrey
     )
 
-    # -------- CABECERA TABLA --------
-    data = [
-        [
-            Paragraph("<b>SECCION</b>", estilo_normal),
-            Paragraph("<b>ITEM</b>", estilo_normal),
-            Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
-            Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
-        ]
-    ]
+    # -------- CABECERA --------
+    data = [[
+        Paragraph("<b>SECCIÓN</b>", estilo_normal),
+        Paragraph("<b>ITEM</b>", estilo_normal),
+        Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
+        Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
+    ]]
 
     ultima_seccion = None
     inicio_merge = 1
 
     # -------- FILAS --------
     for f in filas:
-        seccion = f["Seccion"]
-        item = Paragraph(f["Tarea"], estilo_normal)
-        cal = Paragraph(str(f["Calificación"]), estilo_normal)
-        obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
+        seccion = f["seccion"]
+        item = Paragraph(f["item"], estilo_normal)
+        cal = Paragraph(str(f["puntaje"]), estilo_normal)
+        obs = Paragraph(f["obs"] if f["obs"] else "-", estilo_normal)
 
         if seccion != ultima_seccion:
             if ultima_seccion is not None:
-                data_span_fin = len(data) - 1
-                tabla_temp = Table(data)
-                tabla_temp.setStyle(TableStyle([
-                    ("SPAN", (0, inicio_merge), (0, data_span_fin))
-                ]))
-                inicio_merge = len(data)
-
-            data.append([
-                Paragraph(seccion, estilo_seccion),
-                item,
-                cal,
-                obs
-            ])
+                data.append([
+                    Paragraph(seccion, estilo_seccion),
+                    item,
+                    cal,
+                    obs
+                ])
+                inicio_merge = len(data) - 1
+            else:
+                data.append([
+                    Paragraph(seccion, estilo_seccion),
+                    item,
+                    cal,
+                    obs
+                ])
             ultima_seccion = seccion
         else:
             data.append([
@@ -330,39 +331,47 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas):
                 obs
             ])
 
-    # -------- TABLA FINAL --------
+    # -------- TABLA --------
     tabla = Table(
         data,
-        colWidths=[90, 180, 70, 180],
+        colWidths=[95, 190, 70, 170],
         repeatRows=1
     )
+
+    spans = []
+    fila_inicio = 1
+    seccion_actual = None
+
+    for i in range(1, len(data)):
+        texto = data[i][0]
+        if texto != "":
+            if seccion_actual is not None:
+                spans.append(("SPAN", (0, fila_inicio), (0, i-1)))
+            seccion_actual = texto
+            fila_inicio = i
+
+    spans.append(("SPAN", (0, fila_inicio), (0, len(data)-1)))
 
     tabla.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
         ("VALIGN", (0,0), (-1,-1), "TOP"),
         ("ALIGN", (2,1), (2,-1), "CENTER"),
-    ]))
-
-    # Combinar última sección
-    tabla.setStyle(TableStyle([
-        ("SPAN", (0, inicio_merge), (0, len(data)-1))
-    ]))
+    ] + spans))
 
     elementos.append(tabla)
 
     # -------- FOTOS --------
-    elementos.append(Spacer(1, 12))
+    elementos.append(Spacer(1, 14))
     elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
     for f in filas:
-        if f["Foto"]:
-            elementos.append(Paragraph(f["Seccion"] + " - " + f["Tarea"], styles["Normal"]))
-            elementos.append(Image(f["Foto"], width=180, height=130))
+        if f["foto"]:
+            elementos.append(Paragraph(f"{f['seccion']} - {f['item']}", styles["Normal"]))
+            elementos.append(Image(f["foto"], width=180, height=130))
             elementos.append(Spacer(1, 10))
 
-    # -------- GENERAR PDF --------
     doc.build(elementos)
     
 # ---------------- FORMULARIO ----------------
