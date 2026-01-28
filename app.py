@@ -22,7 +22,7 @@ CALIFICACIONES = {
 
 CHECKLIST = {
 
-    "CARLOS": [
+    "PUNTOS DE INFORMACIÓN PISO 1": [
         "Estado y aseo sillas de rueda",
         "Estado y aseo coches de bebé",
         "Estado y aseo mobiliario",
@@ -265,7 +265,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     elementos = []
 
     # ================== ENCABEZADO ==================
-    elementos.append(Paragraph("<b>INFORME CHECKLIST OPERATIVO</b>", styles["Title"]))
+    elementos.append(Paragraph("<b>CHECKLIST BÁSICOS DEL SERVICIO</b>", styles["Title"]))
     elementos.append(Spacer(1, 10))
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
@@ -372,7 +372,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     # ================== PUNTOS CRÍTICOS ==================
     elementos.append(Spacer(1, 18))
-    elementos.append(Paragraph("<b>PUNTOS CRÍTICOS A TRABAJAR (CALIFICACIÓN BAJA)</b>", styles["Heading2"]))
+    elementos.append(Paragraph("<b>PUNTOS A MEJORAR</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
     hay_criticos = False
