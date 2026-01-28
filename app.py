@@ -260,8 +260,8 @@ def generar_pdf(path, inspector, fecha, filas, promedio, semaforo):
     data = [["Sección", "Ítem", "Puntaje", "Observaciones"]]
     for f in filas:
         data.append([f["seccion"], f["item"], f["puntaje"], f["obs"]])
-        
-tabla = Table(data, repeatRows=1)
+
+    tabla = Table(data, repeatRows=1)
     tabla.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
         ("GRID", (0,0), (-1,-1), 0.5, colors.grey)
