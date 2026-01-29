@@ -22,7 +22,7 @@ os.makedirs("fotos", exist_ok=True)
 os.makedirs("pdfs", exist_ok=True)
 
 CALIFICACIONES = {
-    "Seleccione": None,
+    "Seleccione...": None,
     "Bueno": 5,
     "Regular": 3,
     "Malo": 1
@@ -379,57 +379,74 @@ fecha = hora_cliente if hora_cliente else datetime.now().strftime("%Y-%m-%d %H:%
 total_items = sum(len(v) for v in CHECKLIST.values())
 
 with st.form("checklist"):
-
     inspector = st.text_input("Nombre del inspector")
-
-    progreso = st.progress(0)
-    texto_prog = st.empty()
+    fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     filas = []
-    completados = 0
     total = 0
-    error = False
+    contador = 0
+    errores = []
+
+    total_items = sum(len(v) for v in CHECKLIST.values())
+    completados = 0
+
+    progreso = st.progress(0)
+    texto_progreso = st.empty()
 
     for seccion, items in CHECKLIST.items():
         st.subheader(seccion)
 
         for item in items:
-            c1, c2, c3, c4 = st.columns([3,1,3,2])
+            c1, c2, c3, c4 = st.columns([3, 1.2, 3, 2])
 
             with c1:
                 st.write(item)
 
             with c2:
-                cal_txt = st.selectbox(
+                cal = st.selectbox(
                     "Calificación",
                     CALIFICACIONES.keys(),
-                    key=f"{seccion}_{item}"
+                    index=0,
+                    key=f"cal_{seccion}_{item}"
                 )
 
             with c3:
-                obs = st.text_input("Observaciones", key=f"obs_{seccion}_{item}")
+                obs = st.text_input(
+                    "Observaciones",
+                    key=f"obs_{seccion}_{item}"
+                )
 
             with c4:
-                foto = st.file_uploader("Foto", type=["jpg","png"], key=f"foto_{seccion}_{item}")
+                foto = st.file_uploader(
+                    "Foto",
+                    type=["jpg", "png"],
+                    key=f"foto_{seccion}_{item}"
+                )
 
-            if CALIFICACIONES[cal_txt] is None:
-                error = True
-                st.warning("⚠️ Debe seleccionar calificación")
-                continue
-
-            puntaje = CALIFICACIONES[cal_txt]
-
-            if puntaje == 3 and not obs:
-                error = True
-                st.warning("⚠️ Observación obligatoria cuando es Regular")
-
-            if puntaje == 1 and not foto:
-                error = True
-                st.warning("⚠️ Foto obligatoria cuando es Malo")
-
+            puntaje = CALIFICACIONES[cal]
             ruta_foto = ""
+
+            # ---------------- VALIDACIONES ----------------
+            if puntaje is None:
+                errores.append(f"{seccion} - {item}: sin calificar")
+                st.markdown("🔴 **Pendiente de calificación**")
+            else:
+                completados += 1
+                total += puntaje
+                contador += 1
+
+                if puntaje == 3 and not obs:
+                    errores.append(f"{seccion} - {item}: observación obligatoria")
+
+                if puntaje == 1 and not foto:
+                    errores.append(f"{seccion} - {item}: foto obligatoria")
+
+            # ---------------- FOTO ----------------
             if foto:
-                ruta_foto = f"fotos/{uuid.uuid4().hex}.jpg"
+                nombre_unico = uuid.uuid4().hex
+                ruta_foto = f"fotos/{fecha}_{seccion}_{item}_{nombre_unico}.jpg"
+                ruta_foto = ruta_foto.replace(" ", "_")
+
                 with open(ruta_foto, "wb") as f:
                     f.write(foto.getbuffer())
 
@@ -441,29 +458,10 @@ with st.form("checklist"):
                 "Foto": ruta_foto
             })
 
-            completados += 1
-            total += puntaje
-
-            porcentaje = int((completados / total_items) * 100)
-            progreso.progress(porcentaje)
-            texto_prog.markdown(f"**Progreso:** {porcentaje}%")
+            progreso.progress(completados / total_items)
+            texto_progreso.write(f"📊 Progreso: {int((completados / total_items) * 100)}%")
 
     guardar = st.form_submit_button(
         "💾 Guardar y generar PDF",
-        disabled=(completados < total_items or error)
+        disabled=len(errores) > 0
     )
-
-
-# ---------------- RESULTADO ----------------
-if guardar and not error:
-    promedio = round(total / completados, 2)
-    semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
-
-    st.subheader("🚦 Resultado final")
-    st.success(semaforo)
-
-    pdf_path = f"pdfs/Checklist_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
-
-    with open(pdf_path, "rb") as f:
-        st.download_button("📄 Descargar PDF", f, file_name="Checklist.pdf")
