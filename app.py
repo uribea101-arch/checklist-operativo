@@ -250,6 +250,7 @@ CHECKLIST = {
 styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
+# ---------------- PDF ----------------
 def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     doc = SimpleDocTemplate(
@@ -273,17 +274,19 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos.append(Paragraph(f"<b>Promedio General:</b> {promedio}", styles["Normal"]))
     elementos.append(
-        Paragraph(f"<b>Semáforo:</b> {semaforo}",
-        ParagraphStyle("res", textColor=color))
+        Paragraph(
+            f"<b>Semáforo:</b> {semaforo}",
+            ParagraphStyle("res", textColor=color, alignment=1)
+        )
     )
     elementos.append(Spacer(1, 14))
 
-    estilo_normal = ParagraphStyle("normal", fontSize=8)
+    estilo_normal = ParagraphStyle("normal", fontSize=8, leading=10)
     estilo_seccion = ParagraphStyle("sec", fontSize=9, alignment=1, backColor=colors.lightgrey)
 
     def estilo_cal(v):
         return ParagraphStyle(
-            "cal",
+            f"cal_{v}",
             alignment=1,
             backColor=colors.red if v == 1 else colors.yellow if v == 3 else None
         )
@@ -291,8 +294,8 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
-        Paragraph("<b>CAL</b>", estilo_normal),
-        Paragraph("<b>OBS</b>", estilo_normal)
+        Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
+        Paragraph("<b>OBSERVACIONES</b>", estilo_normal)
     ]]
 
     ultima = None
@@ -305,7 +308,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         ])
         ultima = f["Seccion"]
 
-    tabla = Table(data, colWidths=[120, 220, 60, 160], repeatRows=1)
+    tabla = Table(data, colWidths=[120, 220, 90, 160], repeatRows=1)
     tabla.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("ALIGN", (2,1), (2,-1), "CENTER"),
@@ -314,6 +317,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos.append(tabla)
     doc.build(elementos)
+
 
 # ---------------- FORMULARIO ----------------
 total_items = sum(len(v) for v in CHECKLIST.values())
@@ -335,7 +339,7 @@ with st.form("checklist"):
     filas = []
     completados = 0
     total = 0
-    error = False
+    errores = []   # 👈 CLAVE
 
     for seccion, items in CHECKLIST.items():
         st.subheader(seccion)
@@ -361,16 +365,17 @@ with st.form("checklist"):
 
             puntaje = CALIFICACIONES[cal_txt]
 
+            # VALIDACIONES
             if puntaje == 3 and not obs.strip():
-                error = True
+                errores.append("Regular sin observación")
                 st.warning("🟡 Observación obligatoria cuando es Regular")
 
             if puntaje == 1:
                 if not obs.strip():
-                    error = True
+                    errores.append("Malo sin observación")
                     st.warning("🔴 Observación obligatoria cuando es Malo")
                 if not foto:
-                    error = True
+                    errores.append("Malo sin foto")
                     st.warning("📷 Foto obligatoria cuando es Malo")
 
             ruta_foto = ""
@@ -393,11 +398,12 @@ with st.form("checklist"):
 
     guardar = st.form_submit_button(
         "💾 Guardar y generar PDF",
-        disabled=error
+        disabled=len(errores) > 0
     )
 
+
 # ---------------- RESULTADO ----------------
-if guardar and not error:
+if guardar and len(errores) == 0:
     promedio = round(total / completados, 2)
     semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
 
@@ -407,4 +413,8 @@ if guardar and not error:
     generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
 
     with open(pdf_path, "rb") as f:
-        st.download_button("📄 Descargar PDF", f, file_name="Checklist.pdf")
+        st.download_button(
+            "📄 Descargar PDF",
+            f,
+            file_name="Checklist.pdf"
+        )
