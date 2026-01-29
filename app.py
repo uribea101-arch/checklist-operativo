@@ -423,7 +423,14 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
             repeatRows=1
         )
 
-        tabla_pm.setStyle(tabla.getStyle())
+        tabla_pm.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E9EEF3")),
+            ("ALIGN", (2, 1), (2, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("VALIGN", (1, 1), (-1, -1), "TOP"),
+        ]))
+
         elementos.append(tabla_pm)
     else:
         elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
