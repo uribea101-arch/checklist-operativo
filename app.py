@@ -574,7 +574,9 @@ if guardar:
        # Normalizar fecha para nombre de archivo
 fecha_archivo = fecha.replace(":", "-").replace(" ", "_")
 
-pdf_path = f"Checklist_{fecha_archivo}.pdf"
+fecha_archivo = fecha_dt.strftime("%Y-%m-%d_%H-%M")
+pdf_path = f"pdfs/Checklist_{fecha_archivo}.pdf"
+
 
 try:
     generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
