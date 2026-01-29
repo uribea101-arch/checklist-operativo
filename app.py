@@ -269,60 +269,67 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos = []
 
-    # ================== ENCABEZADO ==================
-    elementos.append(Paragraph("<b>CHECKLIST BÁSICOS DEL SERVICIO</b>", styles["Title"]))
-    elementos.append(Spacer(1, 8))
-    elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
-    elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
-    elementos.append(Spacer(1, 12))
-
-    # ================== RESULTADO ==================
-    color_semaforo = (
-        colors.green if "VERDE" in semaforo else
-        colors.orange if "AMARILLO" in semaforo else
-        colors.red
-    )
-
-    estilo_resultado = ParagraphStyle(
-        name="Resultado",
-        parent=styles["Normal"],
-        textColor=color_semaforo,
-        alignment=1,
-        fontSize=10
-    )
-
-    elementos.append(Paragraph(f"<b>Promedio General:</b> {promedio}", styles["Normal"]))
-    elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilo_resultado))
-    elementos.append(Spacer(1, 14))
-
     # ================== ESTILOS ==================
+    titulo = ParagraphStyle(
+        "Titulo",
+        fontSize=16,
+        alignment=1,
+        spaceAfter=10
+    )
+
     estilo_normal = ParagraphStyle(
-        name="NormalTabla",
+        "NormalTabla",
         fontSize=8,
         leading=10,
         wordWrap="CJK"
     )
 
     estilo_seccion = ParagraphStyle(
-        name="SeccionTabla",
+        "SeccionTabla",
         fontSize=9,
-        leading=11,
+        leading=12,
         alignment=1,
-        backColor=colors.lightgrey,
-        wordWrap="CJK"
+        textColor=colors.white,
+        backColor=colors.HexColor("#4A6FA5")
     )
 
     def estilo_calificacion(valor):
         return ParagraphStyle(
-            name=f"Cal_{valor}",
+            f"Cal_{valor}",
             parent=estilo_normal,
             alignment=1,
             backColor=(
-                colors.red if valor == 1 else
-                colors.yellow if valor == 3 else
-                None
+                colors.HexColor("#D4EDDA") if valor == 5 else
+                colors.HexColor("#FFF3CD") if valor == 3 else
+                colors.HexColor("#F8D7DA")
             )
         )
+
+    def texto_calificacion(valor):
+        if valor == 5:
+            return "BUENO"
+        if valor == 3:
+            return "REGULAR"
+        return "MALO"
+
+    # ================== ENCABEZADO ==================
+    elementos.append(Paragraph("CHECKLIST BÁSICOS DEL SERVICIO", titulo))
+    elementos.append(Spacer(1, 6))
+
+    info_tabla = Table([
+        ["Inspector:", inspector, "Fecha:", fecha],
+        ["Promedio:", promedio, "Estado:", semaforo],
+    ], colWidths=[70, 170, 70, 170])
+
+    info_tabla.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("FONT", (0, 0), (-1, -1), "Helvetica", 9),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+
+    elementos.append(info_tabla)
+    elementos.append(Spacer(1, 14))
 
     # ================== TABLA PRINCIPAL ==================
     data = [[
@@ -337,8 +344,10 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     for f in filas:
         seccion = f["Seccion"]
         tarea = Paragraph(f["Tarea"], estilo_normal)
-        cal_valor = f["Calificación"]
-        cal = Paragraph(str(cal_valor), estilo_calificacion(cal_valor))
+        cal = Paragraph(
+            texto_calificacion(f["Calificación"]),
+            estilo_calificacion(f["Calificación"])
+        )
         obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
 
         if seccion != ultima_seccion:
@@ -368,22 +377,17 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     tabla.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-
-        ("ALIGN", (0, 1), (0, -1), "CENTER"),
-        ("VALIGN", (0, 1), (0, -1), "MIDDLE"),
-
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E9EEF3")),
         ("ALIGN", (2, 1), (2, -1), "CENTER"),
-        ("VALIGN", (2, 1), (2, -1), "MIDDLE"),
-
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("VALIGN", (1, 1), (-1, -1), "TOP"),
     ] + spans))
 
     elementos.append(tabla)
 
-    # ================== PUNTOS A MEJORAR (TABLA) ==================
+    # ================== PUNTOS A MEJORAR ==================
     elementos.append(Spacer(1, 18))
-    elementos.append(Paragraph("<b>PUNTOS A MEJORAR</b>", styles["Heading2"]))
+    elementos.append(Paragraph("PUNTOS A MEJORAR", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
     criticos = [f for f in filas if f["Calificación"] in (1, 3)]
@@ -401,7 +405,10 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         for f in criticos:
             seccion = f["Seccion"]
             tarea = Paragraph(f["Tarea"], estilo_normal)
-            cal = Paragraph(str(f["Calificación"]), estilo_calificacion(f["Calificación"]))
+            cal = Paragraph(
+                texto_calificacion(f["Calificación"]),
+                estilo_calificacion(f["Calificación"])
+            )
             obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
 
             if seccion != ultima_seccion:
@@ -416,49 +423,34 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
             repeatRows=1
         )
 
-        spans_pm = []
-        fila_inicio = 1
-        seccion_actual = None
-
-        for i in range(1, len(data_pm)):
-            if data_pm[i][0] != "":
-                if seccion_actual is not None:
-                    spans_pm.append(("SPAN", (0, fila_inicio), (0, i - 1)))
-                seccion_actual = data_pm[i][0]
-                fila_inicio = i
-
-        spans_pm.append(("SPAN", (0, fila_inicio), (0, len(data_pm) - 1)))
-
-        tabla_pm.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-
-            ("ALIGN", (0, 1), (0, -1), "CENTER"),
-            ("VALIGN", (0, 1), (0, -1), "MIDDLE"),
-
-            ("ALIGN", (2, 1), (2, -1), "CENTER"),
-            ("VALIGN", (2, 1), (2, -1), "MIDDLE"),
-
-            ("VALIGN", (1, 1), (-1, -1), "TOP"),
-        ] + spans_pm))
-
+        tabla_pm.setStyle(tabla.getStyle())
         elementos.append(tabla_pm)
-
     else:
         elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
 
     # ================== REGISTRO FOTOGRÁFICO ==================
     elementos.append(Spacer(1, 18))
-    elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
+    elementos.append(Paragraph("REGISTRO FOTOGRÁFICO", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
+
+    imagenes = []
+    fila_img = []
 
     for f in filas:
         if f["Foto"]:
-            elementos.append(Paragraph(f"{f['Seccion']} - {f['Tarea']}", styles["Normal"]))
-            elementos.append(Image(f["Foto"], width=180, height=130))
-            elementos.append(Spacer(1, 10))
+            fila_img.append(Image(f["Foto"], width=200, height=150))
+            if len(fila_img) == 2:
+                imagenes.append(fila_img)
+                fila_img = []
 
-    # ================== GENERAR PDF ==================
+    if fila_img:
+        imagenes.append(fila_img)
+
+    if imagenes:
+        elementos.append(Table(imagenes, hAlign="CENTER"))
+    else:
+        elementos.append(Paragraph("No se adjuntaron fotografías.", styles["Normal"]))
+
     doc.build(elementos)
 
 # ---------------- FORMULARIO ----------------
