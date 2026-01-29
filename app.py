@@ -458,7 +458,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     else:
         elementos.append(Paragraph("No se adjuntaron fotografías.", styles["Normal"]))
 
-def dibujar_semaforo(canvas, doc):
+    def dibujar_semaforo(canvas, doc):
         canvas.saveState()
 
         if "VERDE" in semaforo:
