@@ -458,7 +458,32 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     else:
         elementos.append(Paragraph("No se adjuntaron fotografías.", styles["Normal"]))
 
-    doc.build(elementos)
+def dibujar_semaforo(canvas, doc):
+    canvas.saveState()
+
+    if "VERDE" in semaforo:
+        color = colors.green
+        texto = "VERDE"
+    elif "AMARILLO" in semaforo:
+        color = colors.orange
+        texto = "AMARILLO"
+    else:
+        color = colors.red
+        texto = "ROJO"
+
+    x = doc.leftMargin
+    y = doc.height + doc.topMargin - 95
+
+    canvas.setFillColor(color)
+    canvas.circle(x + 55, y, 6, fill=1)
+
+    canvas.setFillColor(colors.black)
+    canvas.setFont("Helvetica-Bold", 9)
+    canvas.drawString(x + 70, y - 3, f"Estado: {texto}")
+
+    canvas.restoreState()
+
+    doc.build(elementos, onFirstPage=dibujar_semaforo)
 
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
