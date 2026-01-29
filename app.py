@@ -564,7 +564,6 @@ with st.form("checklist"):
     guardar = st.form_submit_button("💾 Guardar y generar PDF")
 
 # ---------------- RESULTADO ----------------
-# ---------------- RESULTADO ----------------
 if guardar:
     if error or completados < total_items:
         st.error("❌ Checklist incompleto o con errores")
@@ -581,15 +580,23 @@ if guardar:
     else:
         semaforo = "🔴 ROJO"
 
-    # 📄 Nombre seguro del archivo
-    fecha_archivo = fecha.replace(":", "-").replace(" ", "_")
+    # 📄 Nombre seguro del archivo (100% compatible con Linux)
+    from datetime import datetime
+    import os
+
+    fecha_archivo = datetime.now().strftime("%Y%m%d_%H%M%S")
     pdf_path = f"Checklist_{fecha_archivo}.pdf"
 
+    # 📄 Generar PDF
     generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
 
-    with open(pdf_path, "rb") as f:
-        st.download_button(
-            "📄 Descargar PDF",
-            f,
-            file_name="Checklist.pdf"
-        )
+    # 📥 Descargar PDF (verificando que exista)
+    if os.path.exists(pdf_path):
+        with open(pdf_path, "rb") as f:
+            st.download_button(
+                "📄 Descargar PDF",
+                f,
+                file_name="Checklist.pdf"
+            )
+    else:
+        st.error("❌ No se pudo generar el PDF")
