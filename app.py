@@ -525,19 +525,30 @@ with st.form("checklist"):
         st.subheader(seccion)
 
         for item in items:
-            c1, c2, c3, c4 = st.columns([3,1,3,2])
+            c1, c2, c3, c4 = st.columns([3, 1, 3, 2])
 
             with c1:
                 st.write(item)
 
             with c2:
-                cal = st.selectbox("Calificación", OPCIONES_CAL, key=f"cal_{seccion}_{item}")
+                cal = st.selectbox(
+                    "Calificación",
+                    OPCIONES_CAL,
+                    key=f"cal_{seccion}_{item}"
+                )
 
             with c3:
-                obs = st.text_input("Observaciones", key=f"obs_{seccion}_{item}")
+                obs = st.text_input(
+                    "Observaciones",
+                    key=f"obs_{seccion}_{item}"
+                )
 
             with c4:
-                foto = st.file_uploader("Foto", type=["jpg","png"], key=f"foto_{seccion}_{item}")
+                foto = st.file_uploader(
+                    "Foto",
+                    type=["jpg", "png"],
+                    key=f"foto_{seccion}_{item}"
+                )
 
             if cal == "Seleccione...":
                 error = True
@@ -547,24 +558,25 @@ with st.form("checklist"):
             puntaje = CALIFICACIONES[cal]
             completados += 1
 
+            # 🟡 Observación obligatoria si es REGULAR
             if puntaje == 3 and not obs.strip():
                 error = True
-                st.warning("Observación obligatoria cuando es Regular")
+                st.warning("🟡 Observación obligatoria cuando es Regular")
 
-           import os
-
-           ruta_foto = ""
-
-           # Foto obligatoria solo si es MALO
-           if puntaje == 1 and not foto:
+            # 🔴 Foto obligatoria solo si es MALO
+            ruta_foto = ""
+            if puntaje == 1 and not foto:
                 error = True
-                st.warning("📸 Foto obligatoria cuando es Malo")
+                st.warning("🔴 Foto obligatoria cuando es Malo")
 
-# Guardar foto si existe (BUENO, REGULAR o MALO)
-           if foto:
+            # 💾 Guardar foto si existe (BUENO / REGULAR / MALO)
+            if foto:
+                import os, uuid
                 os.makedirs("fotos", exist_ok=True)
                 nombre = uuid.uuid4().hex
-                ruta_foto = os.path.abspath(f"fotos/{fecha}_{nombre}.jpg")
+                ruta_foto = os.path.abspath(
+                    f"fotos/{fecha.replace(':','-')}_{nombre}.jpg"
+                )
                 with open(ruta_foto, "wb") as f:
                     f.write(foto.getbuffer())
 
@@ -580,6 +592,7 @@ with st.form("checklist"):
             contador += 1
 
     st.progress(completados / total_items)
+
     guardar = st.form_submit_button("💾 Guardar y generar PDF")
 
 # ---------------- RESULTADO ----------------
