@@ -431,10 +431,15 @@ with st.form("checklist"):
                 error = True
                 st.warning("⚠️ Foto obligatoria cuando es Malo")
 
+            
+            import uuid
+            
             if foto:
-                ruta_foto = f"fotos/{fecha}_{item}.jpg"
-                with open(ruta_foto, "wb") as f:
-                    f.write(foto.getbuffer())
+                nombre_unico = uuid.uuid4().hex
+                ruta_foto = f"fotos/{fecha}_{seccion}_{item}_{nombre_unico}.jpg"
+                ruta_foto = ruta_foto.replace(" ", "_")
+            with open(ruta_foto, "wb") as f:
+                f.write(foto.getbuffer())
 
             filas.append({
                 "seccion": seccion,
