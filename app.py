@@ -564,28 +564,32 @@ with st.form("checklist"):
     guardar = st.form_submit_button("💾 Guardar y generar PDF")
 
 # ---------------- RESULTADO ----------------
+# ---------------- RESULTADO ----------------
 if guardar:
     if error or completados < total_items:
         st.error("❌ Checklist incompleto o con errores")
+        st.stop()
+
+    # 🔢 Calcular promedio
+    promedio = round(total / contador, 2)
+
+    # 🚦 Semáforo
+    if promedio >= 4:
+        semaforo = "🟢 VERDE"
+    elif promedio >= 3:
+        semaforo = "🟡 AMARILLO"
     else:
-        promedio = round(total / contador, 2)
-        semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
+        semaforo = "🔴 ROJO"
 
-       # Normalizar fecha para nombre de archivo
-fecha_archivo = fecha.replace(":", "-").replace(" ", "_")
+    # 📄 Nombre seguro del archivo
+    fecha_archivo = fecha.replace(":", "-").replace(" ", "_")
+    pdf_path = f"Checklist_{fecha_archivo}.pdf"
 
-pdf_path = f"Checklist_{fecha_archivo}.pdf"
-
-try:
     generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
-except Exception as e:
-    st.error("❌ Error al generar el PDF")
-    st.exception(e)
-    st.stop()
 
-with open(pdf_path, "rb") as f:
-    st.download_button(
-        "📄 Descargar PDF",
-        f,
-        file_name="Checklist.pdf"
-    )
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            "📄 Descargar PDF",
+            f,
+            file_name="Checklist.pdf"
+        )
