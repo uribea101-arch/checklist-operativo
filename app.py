@@ -571,7 +571,7 @@ if guardar:
         promedio = round(total / contador, 2)
         semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
 
-        pdf_path = f"pdfs/Checklist_{fecha}.pdf"
+        pdf_path = f"Checklist_{fecha_archivo}.pdf"
         generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
 
         with open(pdf_path, "rb") as f:
