@@ -315,11 +315,15 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     inicio_merge = 1
 
     # ================== FILAS ==================
-    for f in filas:
-        seccion = f["seccion"]
-        item = Paragraph(f["item"], estilo_normal)
-        cal = Paragraph(str(f["puntaje"]), estilo_normal)
-        obs = Paragraph(f["obs"] if f["obs"] else "-", estilo_normal)
+        for f in filas:
+            seccion = f["Seccion"]
+            item = Paragraph(f["Tarea"], estilo_normal)
+            cal = Paragraph(str(f["Calificación"]), estilo_normal)
+            obs = Paragraph(
+                f["Observaciones"] if f["Observaciones"] else "-",
+                estilo_normal
+            )
+
 
         if seccion != ultima_seccion:
             data.append([
