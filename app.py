@@ -372,7 +372,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         data_pm = [[
             Paragraph("<b>SECCIÓN</b>", estilo_normal),
             Paragraph("<b>ITEM</b>", estilo_normal),
-            Paragraph("<b>CAL</b>", estilo_normal),
+            Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
             Paragraph("<b>OBSERVACIÓN</b>", estilo_normal),
         ]]
 
