@@ -370,9 +370,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
 
 # ---------------- FORMULARIO ----------------
-hora_cliente = st_javascript("new Date().toLocaleString()")
-fecha = hora_cliente if hora_cliente else datetime.now().strftime("%Y-%m-%d %H:%M")
-
+fecha = datetime.now().strftime("%Y-%m-%d %H:%M")
 total_items = sum(len(v) for v in CHECKLIST.values())
 
 with st.form("checklist"):
