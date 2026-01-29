@@ -375,11 +375,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
             Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
             Paragraph("<b>OBSERVACIÓN</b>", estilo_normal),
         ]]
-    tabla = Table(
-        data,
-        colWidths=[95, 185, 85, 165],  # 👈 CALIFICACIÓN más ancha
-        repeatRows=1
-    )
+   
         ultima = None
         for f in criticos:
             if f["Seccion"] != ultima:
