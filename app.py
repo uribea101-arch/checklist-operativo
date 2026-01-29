@@ -318,7 +318,28 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     info_tabla = Table([
         ["Inspector:", inspector, "Fecha:", fecha],
-        ["Promedio:", promedio, "Estado:", semaforo],
+     # Color según semáforo
+        if "VERDE" in semaforo:
+            color_estado = colors.green
+        elif "AMARILLO" in semaforo:
+            color_estado = colors.orange
+        else:
+            color_estado = colors.red
+
+    estado_paragraph = Paragraph(
+        f"<b>{semaforo}</b>",
+        ParagraphStyle(
+            "EstadoColor",
+            fontSize=9,
+            textColor=color_estado
+        )
+    )
+
+info_tabla = Table([
+    ["Inspector:", inspector, "Fecha:", fecha],
+    ["Promedio:", promedio, "Estado:", estado_paragraph],
+], colWidths=[70, 170, 70, 170])
+
     ], colWidths=[70, 170, 70, 170])
 
     info_tabla.setStyle(TableStyle([
