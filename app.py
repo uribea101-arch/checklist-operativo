@@ -3,6 +3,8 @@ from datetime import datetime
 import os
 import uuid
 
+from streamlit_javascript import st_javascript
+
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle,
     Paragraph, Spacer, Image
@@ -10,6 +12,7 @@ from reportlab.platypus import (
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+
 
 # ---------------- CONFIGURACIÓN ----------------
 st.set_page_config(page_title="Checklist Operativo", layout="wide")
@@ -19,6 +22,7 @@ os.makedirs("fotos", exist_ok=True)
 os.makedirs("pdfs", exist_ok=True)
 
 CALIFICACIONES = {
+    "Seleccione": None,
     "Bueno": 5,
     "Regular": 3,
     "Malo": 1
@@ -251,10 +255,6 @@ styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
 def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib import colors
 
     styles = getSampleStyleSheet()
 
@@ -269,62 +269,37 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos = []
 
-    # ================== ENCABEZADO ==================
+    # ===== ENCABEZADO =====
     elementos.append(Paragraph("<b>CHECKLIST BÁSICOS DEL SERVICIO</b>", styles["Title"]))
     elementos.append(Spacer(1, 8))
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
     elementos.append(Spacer(1, 12))
 
-    # ================== RESULTADO ==================
-    color_semaforo = (
-        colors.green if "VERDE" in semaforo else
-        colors.orange if "AMARILLO" in semaforo else
-        colors.red
-    )
-
-    estilo_resultado = ParagraphStyle(
-        name="Resultado",
-        parent=styles["Normal"],
-        textColor=color_semaforo,
-        alignment=1,
-        fontSize=10
-    )
+    # ===== RESULTADO =====
+    color_semaforo = colors.green if promedio >= 4 else colors.orange if promedio >= 3 else colors.red
 
     elementos.append(Paragraph(f"<b>Promedio General:</b> {promedio}", styles["Normal"]))
-    elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilo_resultado))
+    elementos.append(
+        Paragraph(
+            f"<b>Semáforo:</b> {semaforo}",
+            ParagraphStyle("res", textColor=color_semaforo, alignment=1)
+        )
+    )
     elementos.append(Spacer(1, 14))
 
-    # ================== ESTILOS ==================
-    estilo_normal = ParagraphStyle(
-        name="NormalTabla",
-        fontSize=8,
-        leading=10,
-        wordWrap="CJK"
-    )
+    # ===== ESTILOS =====
+    estilo_normal = ParagraphStyle("normal", fontSize=8, leading=10)
+    estilo_seccion = ParagraphStyle("seccion", fontSize=9, alignment=1, backColor=colors.lightgrey)
 
-    estilo_seccion = ParagraphStyle(
-        name="SeccionTabla",
-        fontSize=9,
-        leading=11,
-        alignment=1,
-        backColor=colors.lightgrey,
-        wordWrap="CJK"
-    )
-
-    def estilo_calificacion(valor):
+    def estilo_cal(valor):
         return ParagraphStyle(
-            name=f"Cal_{valor}",
-            parent=estilo_normal,
+            f"cal_{valor}",
             alignment=1,
-            backColor=(
-                colors.red if valor == 1 else
-                colors.yellow if valor == 3 else
-                None
-            )
+            backColor=colors.red if valor == 1 else colors.yellow if valor == 3 else None
         )
 
-    # ================== TABLA PRINCIPAL ==================
+    # ===== TABLA PRINCIPAL =====
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
@@ -332,147 +307,88 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
     ]]
 
-    ultima_seccion = None
+    ultima = None
+    inicio = 1
 
     for f in filas:
-        seccion = f["Seccion"]
-        tarea = Paragraph(f["Tarea"], estilo_normal)
-        cal_valor = f["Calificación"]
-        cal = Paragraph(str(cal_valor), estilo_calificacion(cal_valor))
-        obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
+        sec = f["Seccion"]
+        fila = [
+            Paragraph(sec, estilo_seccion) if sec != ultima else "",
+            Paragraph(f["Tarea"], estilo_normal),
+            Paragraph(str(f["Calificación"]), estilo_cal(f["Calificación"])),
+            Paragraph(f["Observaciones"], estilo_normal)
+        ]
+        data.append(fila)
+        ultima = sec
 
-        if seccion != ultima_seccion:
-            data.append([Paragraph(seccion, estilo_seccion), tarea, cal, obs])
-            ultima_seccion = seccion
-        else:
-            data.append(["", tarea, cal, obs])
-
-    tabla = Table(
-        data,
-        colWidths=[100, 190, 85, 165],
-        repeatRows=1
-    )
+    tabla = Table(data, colWidths=[110, 200, 90, 160], repeatRows=1)
 
     spans = []
-    fila_inicio = 1
-    seccion_actual = None
-
+    start = 1
     for i in range(1, len(data)):
         if data[i][0] != "":
-            if seccion_actual is not None:
-                spans.append(("SPAN", (0, fila_inicio), (0, i - 1)))
-            seccion_actual = data[i][0]
-            fila_inicio = i
-
-    spans.append(("SPAN", (0, fila_inicio), (0, len(data) - 1)))
+            spans.append(("SPAN", (0, start), (0, i - 1)))
+            start = i
+    spans.append(("SPAN", (0, start), (0, len(data) - 1)))
 
     tabla.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-
-        ("ALIGN", (0, 1), (0, -1), "CENTER"),
-        ("VALIGN", (0, 1), (0, -1), "MIDDLE"),
-
-        ("ALIGN", (2, 1), (2, -1), "CENTER"),
-        ("VALIGN", (2, 1), (2, -1), "MIDDLE"),
-
-        ("VALIGN", (1, 1), (-1, -1), "TOP"),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+        ("ALIGN", (2,1), (2,-1), "CENTER"),
+        ("VALIGN", (0,1), (0,-1), "MIDDLE"),
     ] + spans))
 
     elementos.append(tabla)
 
-    # ================== PUNTOS A MEJORAR (TABLA) ==================
-    elementos.append(Spacer(1, 18))
+    # ===== PUNTOS A MEJORAR (TABLA) =====
+    elementos.append(Spacer(1, 16))
     elementos.append(Paragraph("<b>PUNTOS A MEJORAR</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
     criticos = [f for f in filas if f["Calificación"] in (1, 3)]
 
     if criticos:
-        data_pm = [[
-            Paragraph("<b>SECCIÓN</b>", estilo_normal),
-            Paragraph("<b>ITEM</b>", estilo_normal),
-            Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
-            Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
+        data2 = [[
+            "SECCIÓN", "ITEM", "CALIFICACIÓN"
         ]]
 
-        ultima_seccion = None
-
+        ultima = None
         for f in criticos:
-            seccion = f["Seccion"]
-            tarea = Paragraph(f["Tarea"], estilo_normal)
-            cal = Paragraph(str(f["Calificación"]), estilo_calificacion(f["Calificación"]))
-            obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
+            data2.append([
+                f["Seccion"] if f["Seccion"] != ultima else "",
+                f["Tarea"],
+                f["Calificación"]
+            ])
+            ultima = f["Seccion"]
 
-            if seccion != ultima_seccion:
-                data_pm.append([Paragraph(seccion, estilo_seccion), tarea, cal, obs])
-                ultima_seccion = seccion
-            else:
-                data_pm.append(["", tarea, cal, obs])
-
-        tabla_pm = Table(
-            data_pm,
-            colWidths=[100, 190, 85, 165],
-            repeatRows=1
-        )
-
-        spans_pm = []
-        fila_inicio = 1
-        seccion_actual = None
-
-        for i in range(1, len(data_pm)):
-            if data_pm[i][0] != "":
-                if seccion_actual is not None:
-                    spans_pm.append(("SPAN", (0, fila_inicio), (0, i - 1)))
-                seccion_actual = data_pm[i][0]
-                fila_inicio = i
-
-        spans_pm.append(("SPAN", (0, fila_inicio), (0, len(data_pm) - 1)))
-
-        tabla_pm.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-
-            ("ALIGN", (0, 1), (0, -1), "CENTER"),
-            ("VALIGN", (0, 1), (0, -1), "MIDDLE"),
-
-            ("ALIGN", (2, 1), (2, -1), "CENTER"),
-            ("VALIGN", (2, 1), (2, -1), "MIDDLE"),
-
-            ("VALIGN", (1, 1), (-1, -1), "TOP"),
-        ] + spans_pm))
-
-        elementos.append(tabla_pm)
-
+        tabla2 = Table(data2, colWidths=[150, 260, 90], repeatRows=1)
+        tabla2.setStyle(TableStyle([
+            ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+            ("ALIGN", (2,1), (2,-1), "CENTER"),
+        ]))
+        elementos.append(tabla2)
     else:
         elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
 
-    # ================== REGISTRO FOTOGRÁFICO ==================
-    elementos.append(Spacer(1, 18))
-    elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
-    elementos.append(Spacer(1, 8))
-
-    for f in filas:
-        if f["Foto"]:
-            elementos.append(Paragraph(f"{f['Seccion']} - {f['Tarea']}", styles["Normal"]))
-            elementos.append(Image(f["Foto"], width=180, height=130))
-            elementos.append(Spacer(1, 10))
-
-    # ================== GENERAR PDF ==================
     doc.build(elementos)
-    
+
+
 # ---------------- FORMULARIO ----------------
+hora_cliente = st_javascript("new Date().toLocaleString()")
+fecha = hora_cliente if hora_cliente else datetime.now().strftime("%Y-%m-%d %H:%M")
+
+total_items = sum(len(v) for v in CHECKLIST.values())
+
 with st.form("checklist"):
+
     inspector = st.text_input("Nombre del inspector")
-    fecha = datetime.now().strftime("%Y-%m-%d_%H-%M")
+
+    progreso = st.progress(0)
+    texto_prog = st.empty()
 
     filas = []
-    total = 0
-    contador = 0
-    error = False
-
-    total_items = sum(len(v) for v in CHECKLIST.values())
     completados = 0
+    total = 0
+    error = False
 
     for seccion, items in CHECKLIST.items():
         st.subheader(seccion)
@@ -484,7 +400,11 @@ with st.form("checklist"):
                 st.write(item)
 
             with c2:
-                cal = st.selectbox("Calificación", OPCIONES_CAL, key=f"cal_{seccion}_{item}")
+                cal_txt = st.selectbox(
+                    "Calificación",
+                    CALIFICACIONES.keys(),
+                    key=f"{seccion}_{item}"
+                )
 
             with c3:
                 obs = st.text_input("Observaciones", key=f"obs_{seccion}_{item}")
@@ -492,28 +412,26 @@ with st.form("checklist"):
             with c4:
                 foto = st.file_uploader("Foto", type=["jpg","png"], key=f"foto_{seccion}_{item}")
 
-            if cal == "Seleccione...":
+            if CALIFICACIONES[cal_txt] is None:
                 error = True
-                st.error("Seleccione calificación")
+                st.warning("⚠️ Debe seleccionar calificación")
                 continue
 
-            puntaje = CALIFICACIONES[cal]
-            completados += 1
+            puntaje = CALIFICACIONES[cal_txt]
 
-            if puntaje == 3 and not obs.strip():
+            if puntaje == 3 and not obs:
                 error = True
-                st.warning("Observación obligatoria cuando es Regular")
+                st.warning("⚠️ Observación obligatoria cuando es Regular")
+
+            if puntaje == 1 and not foto:
+                error = True
+                st.warning("⚠️ Foto obligatoria cuando es Malo")
 
             ruta_foto = ""
-            if puntaje == 1:
-                if not foto:
-                    error = True
-                    st.warning("Foto obligatoria cuando es Malo")
-                else:
-                    nombre = uuid.uuid4().hex
-                    ruta_foto = f"fotos/{fecha}_{nombre}.jpg"
-                    with open(ruta_foto, "wb") as f:
-                        f.write(foto.getbuffer())
+            if foto:
+                ruta_foto = f"fotos/{uuid.uuid4().hex}.jpg"
+                with open(ruta_foto, "wb") as f:
+                    f.write(foto.getbuffer())
 
             filas.append({
                 "Seccion": seccion,
@@ -523,22 +441,29 @@ with st.form("checklist"):
                 "Foto": ruta_foto
             })
 
+            completados += 1
             total += puntaje
-            contador += 1
 
-    st.progress(completados / total_items)
-    guardar = st.form_submit_button("💾 Guardar y generar PDF")
+            porcentaje = int((completados / total_items) * 100)
+            progreso.progress(porcentaje)
+            texto_prog.markdown(f"**Progreso:** {porcentaje}%")
+
+    guardar = st.form_submit_button(
+        "💾 Guardar y generar PDF",
+        disabled=(completados < total_items or error)
+    )
+
 
 # ---------------- RESULTADO ----------------
-if guardar:
-    if error or completados < total_items:
-        st.error("❌ Checklist incompleto o con errores")
-    else:
-        promedio = round(total / contador, 2)
-        semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
+if guardar and not error:
+    promedio = round(total / completados, 2)
+    semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
 
-        pdf_path = f"pdfs/Checklist_{fecha}.pdf"
-        generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
+    st.subheader("🚦 Resultado final")
+    st.success(semaforo)
 
-        with open(pdf_path, "rb") as f:
-            st.download_button("📄 Descargar PDF", f, file_name="Checklist.pdf")
+    pdf_path = f"pdfs/Checklist_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
+
+    with open(pdf_path, "rb") as f:
+        st.download_button("📄 Descargar PDF", f, file_name="Checklist.pdf")
