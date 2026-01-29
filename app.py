@@ -269,11 +269,14 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     elementos.append(Spacer(1, 10))
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 12))
 
     # ================== RESULTADO ==================
-    color_semaforo = colors.green if "VERDE" in semaforo else \
-                     colors.orange if "AMARILLO" in semaforo else colors.red
+    color_semaforo = (
+        colors.green if "VERDE" in semaforo else
+        colors.orange if "AMARILLO" in semaforo else
+        colors.red
+    )
 
     estilo_resultado = ParagraphStyle(
         name="Resultado",
@@ -303,7 +306,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         backColor=colors.lightgrey
     )
 
-    # ================== CABECERA ==================
+    # ================== CABECERA TABLA ==================
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
@@ -311,38 +314,14 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
     ]]
 
-    ultima_seccion = None
-    inicio_merge = 1
-
     # ================== FILAS ==================
-        for f in filas:
-            if f["Foto"]:
-                elementos.append(
-                    Paragraph(
-                        f"{f['Seccion']} - {f['Tarea']}",
-                        styles["Normal"]
-                    )
-                )
-                elementos.append(
-                    Image(f["Foto"], width=180, height=130)
-                )
-                elementos.append(Spacer(1, 10))
-
-        if seccion != ultima_seccion:
-            data.append([
-                Paragraph(seccion, estilo_seccion),
-                item,
-                cal,
-                obs
-            ])
-            ultima_seccion = seccion
-        else:
-            data.append([
-                "",
-                item,
-                cal,
-                obs
-            ])
+    for f in filas:
+        data.append([
+            Paragraph(f["Seccion"], estilo_seccion),
+            Paragraph(f["Tarea"], estilo_normal),
+            Paragraph(str(f["Calificación"]), estilo_normal),
+            Paragraph(f["Observaciones"] if f["Observaciones"] else "-", estilo_normal),
+        ])
 
     # ================== TABLA ==================
     tabla = Table(
@@ -351,29 +330,12 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         repeatRows=1
     )
 
-    spans = []
-    fila_inicio = 1
-    seccion_actual = None
-
-    for i in range(1, len(data)):
-        if data[i][0] != "":
-            if seccion_actual is not None:
-                spans.append(("SPAN", (0, fila_inicio), (0, i-1)))
-            seccion_actual = data[i][0]
-            fila_inicio = i
-
-    spans.append(("SPAN", (0, fila_inicio), (0, len(data)-1)))
-
     tabla.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-
-        # Centrado vertical SOLO sección
-        ("VALIGN", (0,1), (0,-1), "MIDDLE"),
-        ("VALIGN", (1,1), (-1,-1), "TOP"),
-
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
         ("ALIGN", (2,1), (2,-1), "CENTER"),
-    ] + spans))
+    ]))
 
     elementos.append(tabla)
 
@@ -382,26 +344,42 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     elementos.append(Paragraph("<b>PUNTOS A MEJORAR</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
-    hay_criticos = False
+    criticos = [f for f in filas if f["Calificación"] == 1]
 
-    for f in filas:
-        if f["Calificación"] == 1:
-            hay_criticos = True
-            texto = f"- {f['seccion']} | {f['item']}"
-            elementos.append(Paragraph(texto, styles["Normal"]))
+    if criticos:
+        for f in criticos:
+            elementos.append(
+                Paragraph(
+                    f"- {f['Seccion']} | {f['Tarea']}",
+                    styles["Normal"]
+                )
+            )
+    else:
+        elementos.append(
+            Paragraph("No se registraron puntos críticos.", styles["Normal"])
+        )
 
-    if not hay_criticos:
-        elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
-
-    # ================== FOTOS ==================
-    elementos.append(Spacer(1, 16))
+    # ================== REGISTRO FOTOGRÁFICO ==================
+    elementos.append(Spacer(1, 18))
     elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
+    fotos_usadas = set()
+
     for f in filas:
-        if f["foto"]:
-            elementos.append(Paragraph(f"{f['seccion']} - {f['item']}", styles["Normal"]))
-            elementos.append(Image(f["foto"], width=180, height=130))
+        ruta = f["Foto"]
+        if ruta and ruta not in fotos_usadas:
+            fotos_usadas.add(ruta)
+
+            elementos.append(
+                Paragraph(
+                    f"{f['Seccion']} - {f['Tarea']}",
+                    styles["Normal"]
+                )
+            )
+            elementos.append(
+                Image(ruta, width=180, height=130)
+            )
             elementos.append(Spacer(1, 10))
 
     # ================== GENERAR PDF ==================
