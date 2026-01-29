@@ -401,9 +401,14 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     doc.build(elementos)
     
 # ---------------- FORMULARIO ----------------
+import os
+import uuid
+from datetime import datetime
+import streamlit as st
+
 with st.form("checklist"):
     inspector = st.text_input("Nombre del inspector")
-    fecha = datetime.now().strftime("%Y-%m-%d %H:%M")
+    fecha = datetime.now().strftime("%Y-%m-%d_%H-%M")
 
     filas = []
     total = 0
@@ -412,41 +417,58 @@ with st.form("checklist"):
 
     for seccion, items in CHECKLIST.items():
         st.subheader(seccion)
+
         for item in items:
-            c1, c2, c3, c4 = st.columns([3,1,3,2])
+            c1, c2, c3, c4 = st.columns([3, 1, 3, 2])
 
             with c1:
                 st.write(item)
+
             with c2:
-                cal = st.selectbox("Calificación", CALIFICACIONES.keys(), key=f"{seccion}{item}")
+                cal = st.selectbox(
+                    "Calificación",
+                    CALIFICACIONES.keys(),
+                    key=f"cal_{seccion}_{item}"
+                )
+
             with c3:
-                obs = st.text_input("Observaciones", key=f"obs{seccion}{item}")
+                obs = st.text_input(
+                    "Observaciones",
+                    key=f"obs_{seccion}_{item}"
+                )
+
             with c4:
-                foto = st.file_uploader("Foto", type=["jpg","png"], key=f"foto{seccion}{item}")
+                foto = st.file_uploader(
+                    "Foto",
+                    type=["jpg", "png"],
+                    key=f"foto_{seccion}_{item}"
+                )
 
             puntaje = CALIFICACIONES[cal]
             ruta_foto = ""
 
+            # 🚨 Foto obligatoria cuando es Malo
             if puntaje == 1 and not foto:
                 error = True
                 st.warning("⚠️ Foto obligatoria cuando es Malo")
 
-            
-            import uuid
-            
+            # 📁 Guardar foto solo si existe
             if foto:
+                os.makedirs("fotos", exist_ok=True)
+
                 nombre_unico = uuid.uuid4().hex
                 ruta_foto = f"fotos/{fecha}_{seccion}_{item}_{nombre_unico}.jpg"
                 ruta_foto = ruta_foto.replace(" ", "_")
-            with open(ruta_foto, "wb") as f:
-                f.write(foto.getbuffer())
+
+                with open(ruta_foto, "wb") as f:
+                    f.write(foto.getbuffer())
 
             filas.append({
-                "seccion": seccion,
-                "item": item,
-                "puntaje": puntaje,
-                "obs": obs,
-                "foto": ruta_foto
+                "Seccion": seccion,
+                "Tarea": item,
+                "Calificación": puntaje,
+                "Observaciones": obs,
+                "Foto": ruta_foto
             })
 
             total += puntaje
