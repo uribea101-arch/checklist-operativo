@@ -289,7 +289,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilo_resultado))
     elementos.append(Spacer(1, 14))
 
-    # ================== ESTILOS TABLA ==================
+    # ================== ESTILOS ==================
     estilo_normal = ParagraphStyle(
         name="NormalTabla",
         fontSize=8,
@@ -301,12 +301,12 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         name="SeccionTabla",
         fontSize=9,
         leading=11,
-        alignment=1,
+        alignment=1,      # Centrado horizontal
         wordWrap="CJK",
         backColor=colors.lightgrey
     )
 
-    # ================== CABECERA TABLA ==================
+    # ================== CABECERA ==================
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
@@ -315,13 +315,35 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     ]]
 
     # ================== FILAS ==================
+    seccion_actual = None
+    fila_inicio = 1
+    spans = []
+
     for f in filas:
-        data.append([
-            Paragraph(f["Seccion"], estilo_seccion),
-            Paragraph(f["Tarea"], estilo_normal),
-            Paragraph(str(f["Calificación"]), estilo_normal),
-            Paragraph(f["Observaciones"] if f["Observaciones"] else "-", estilo_normal),
-        ])
+        seccion = f["Seccion"]
+
+        if seccion != seccion_actual:
+            if seccion_actual is not None:
+                spans.append(("SPAN", (0, fila_inicio), (0, len(data) - 1)))
+            fila_inicio = len(data)
+            seccion_actual = seccion
+
+            data.append([
+                Paragraph(seccion, estilo_seccion),
+                Paragraph(f["Tarea"], estilo_normal),
+                Paragraph(str(f["Calificación"]), estilo_normal),
+                Paragraph(f["Observaciones"] or "-", estilo_normal),
+            ])
+        else:
+            data.append([
+                "",
+                Paragraph(f["Tarea"], estilo_normal),
+                Paragraph(str(f["Calificación"]), estilo_normal),
+                Paragraph(f["Observaciones"] or "-", estilo_normal),
+            ])
+
+    # Último merge
+    spans.append(("SPAN", (0, fila_inicio), (0, len(data) - 1)))
 
     # ================== TABLA ==================
     tabla = Table(
@@ -333,9 +355,13 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     tabla.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
+
+        # Centrado vertical SOLO la columna sección
+        ("VALIGN", (0,1), (0,-1), "MIDDLE"),
+        ("VALIGN", (1,1), (-1,-1), "TOP"),
+
         ("ALIGN", (2,1), (2,-1), "CENTER"),
-    ]))
+    ] + spans))
 
     elementos.append(tabla)
 
@@ -367,10 +393,8 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     fotos_usadas = set()
 
     for f in filas:
-        ruta = f["Foto"]
-        if ruta and ruta not in fotos_usadas:
-            fotos_usadas.add(ruta)
-
+        if f["Foto"] and f["Foto"] not in fotos_usadas:
+            fotos_usadas.add(f["Foto"])
             elementos.append(
                 Paragraph(
                     f"{f['Seccion']} - {f['Tarea']}",
@@ -378,7 +402,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
                 )
             )
             elementos.append(
-                Image(ruta, width=180, height=130)
+                Image(f["Foto"], width=180, height=130)
             )
             elementos.append(Spacer(1, 10))
 
