@@ -24,7 +24,7 @@ CALIFICACIONES = {
     "Malo": 1
 }
 
-OPCIONES_CAL = ["Seleccione...", "Bueno", "Regular", "Malo"]
+OPCIONES_CAL = ["Bueno", "Regular", "Malo"]
 
 CHECKLIST = {
 
