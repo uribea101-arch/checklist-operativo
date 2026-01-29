@@ -19,13 +19,12 @@ os.makedirs("fotos", exist_ok=True)
 os.makedirs("pdfs", exist_ok=True)
 
 CALIFICACIONES = {
-    "Seleccione...": None,
     "Bueno": 5,
     "Regular": 3,
     "Malo": 1
 }
 
-OPCIONES_CAL = ["Seleccione...", "Bueno", "Regular", "Malo"]
+OPCIONES_CAL = ["Bueno", "Regular", "Malo"]
 
 CHECKLIST = {
 
