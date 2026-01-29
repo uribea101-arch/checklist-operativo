@@ -463,8 +463,18 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
-    inspector = st.text_input("Nombre del inspector")
-    fecha = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    c_inspector, c_fecha = st.columns([2, 1])
+
+    with c_inspector:
+        inspector = st.text_input("Nombre del inspector")
+
+    with c_fecha:
+        fecha_dt = st.datetime_input(
+            "Fecha y hora",
+            value=datetime.now()
+        )
+
+    fecha = fecha_dt.strftime("%Y-%m-%d %H:%M")
 
     filas = []
     total = 0
