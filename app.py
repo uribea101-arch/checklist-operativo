@@ -316,14 +316,17 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     # ================== FILAS ==================
         for f in filas:
-            seccion = f["Seccion"]
-            item = Paragraph(f["Tarea"], estilo_normal)
-            cal = Paragraph(str(f["Calificación"]), estilo_normal)
-            obs = Paragraph(
-                f["Observaciones"] if f["Observaciones"] else "-",
-                estilo_normal
-            )
-
+            if f["Foto"]:
+                elementos.append(
+                    Paragraph(
+                        f"{f['Seccion']} - {f['Tarea']}",
+                        styles["Normal"]
+                    )
+                )
+                elementos.append(
+                    Image(f["Foto"], width=180, height=130)
+                )
+                elementos.append(Spacer(1, 10))
 
         if seccion != ultima_seccion:
             data.append([
@@ -382,7 +385,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     hay_criticos = False
 
     for f in filas:
-        if f["puntaje"] == 1:
+        if f["Calificación"] == 1:
             hay_criticos = True
             texto = f"- {f['seccion']} | {f['item']}"
             elementos.append(Paragraph(texto, styles["Normal"]))
