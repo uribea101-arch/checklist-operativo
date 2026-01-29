@@ -551,16 +551,22 @@ with st.form("checklist"):
                 error = True
                 st.warning("Observación obligatoria cuando es Regular")
 
-            ruta_foto = ""
-            if puntaje == 1:
-                if not foto:
-                    error = True
-                    st.warning("Foto obligatoria cuando es Malo")
-                else:
-                    nombre = uuid.uuid4().hex
-                    ruta_foto = f"fotos/{fecha}_{nombre}.jpg"
-                    with open(ruta_foto, "wb") as f:
-                        f.write(foto.getbuffer())
+           import os
+
+           ruta_foto = ""
+
+           # Foto obligatoria solo si es MALO
+           if puntaje == 1 and not foto:
+                error = True
+                st.warning("📸 Foto obligatoria cuando es Malo")
+
+# Guardar foto si existe (BUENO, REGULAR o MALO)
+           if foto:
+                os.makedirs("fotos", exist_ok=True)
+                nombre = uuid.uuid4().hex
+                ruta_foto = os.path.abspath(f"fotos/{fecha}_{nombre}.jpg")
+                with open(ruta_foto, "wb") as f:
+                    f.write(foto.getbuffer())
 
             filas.append({
                 "Seccion": seccion,
