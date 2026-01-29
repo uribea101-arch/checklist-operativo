@@ -251,6 +251,14 @@ styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
 def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle,
+        Paragraph, Spacer, Image
+    )
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
     styles = getSampleStyleSheet()
 
     doc = SimpleDocTemplate(
@@ -264,28 +272,46 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos = []
 
+    # ================== ENCABEZADO ==================
     elementos.append(Paragraph("<b>CHECKLIST BÁSICOS DEL SERVICIO</b>", styles["Title"]))
     elementos.append(Spacer(1, 8))
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
     elementos.append(Spacer(1, 12))
 
-    color_semaforo = colors.green if "VERDE" in semaforo else colors.orange if "AMARILLO" in semaforo else colors.red
-    estilo_resultado = ParagraphStyle("res", parent=styles["Normal"], textColor=color_semaforo, alignment=1)
+    # ================== RESULTADO ==================
+    color_semaforo = (
+        colors.green if "VERDE" in semaforo else
+        colors.orange if "AMARILLO" in semaforo else
+        colors.red
+    )
 
-    elementos.append(Paragraph(f"<b>Promedio:</b> {promedio}", styles["Normal"]))
+    estilo_resultado = ParagraphStyle(
+        name="Resultado",
+        parent=styles["Normal"],
+        textColor=color_semaforo,
+        alignment=1
+    )
+
+    elementos.append(Paragraph(f"<b>Promedio General:</b> {promedio}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Semáforo:</b> {semaforo}", estilo_resultado))
-    elementos.append(Spacer(1, 12))
+    elementos.append(Spacer(1, 14))
 
-    estilo_normal = ParagraphStyle("n", fontSize=8)
-    estilo_seccion = ParagraphStyle("s", fontSize=9, alignment=1, backColor=colors.lightgrey)
+    # ================== ESTILOS ==================
+    estilo_normal = ParagraphStyle("NormalTabla", fontSize=8, leading=10)
+    estilo_seccion = ParagraphStyle(
+        "SeccionTabla", fontSize=9, alignment=1, backColor=colors.lightgrey
+    )
 
-    def estilo_cal(val):
+    def estilo_calificacion(valor):
         return ParagraphStyle(
-            f"c{val}", parent=estilo_normal, alignment=1,
-            backColor=colors.red if val == 1 else colors.yellow if val == 3 else None
+            f"Cal_{valor}",
+            parent=estilo_normal,
+            alignment=1,
+            backColor=colors.red if valor == 1 else colors.yellow if valor == 3 else None
         )
 
+    # ================== TABLA PRINCIPAL ==================
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
@@ -293,57 +319,110 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
     ]]
 
-    ultima = None
+    ultima_seccion = None
+
     for f in filas:
-        if f["Seccion"] != ultima:
+        if f["Seccion"] != ultima_seccion:
             data.append([
                 Paragraph(f["Seccion"], estilo_seccion),
                 Paragraph(f["Tarea"], estilo_normal),
-                Paragraph(str(f["Calificación"]), estilo_cal(f["Calificación"])),
+                Paragraph(str(f["Calificación"]), estilo_calificacion(f["Calificación"])),
                 Paragraph(f["Observaciones"] or "-", estilo_normal)
             ])
-            ultima = f["Seccion"]
+            ultima_seccion = f["Seccion"]
         else:
             data.append([
                 "",
                 Paragraph(f["Tarea"], estilo_normal),
-                Paragraph(str(f["Calificación"]), estilo_cal(f["Calificación"])),
+                Paragraph(str(f["Calificación"]), estilo_calificacion(f["Calificación"])),
                 Paragraph(f["Observaciones"] or "-", estilo_normal)
             ])
 
-    tabla = Table(data, colWidths=[90, 200, 50, 170], repeatRows=1)
+    tabla = Table(
+        data,
+        colWidths=[95, 185, 85, 165],  # 👈 CALIFICACIÓN más ancha
+        repeatRows=1
+    )
 
     spans = []
-    start = 1
+    inicio = 1
     for i in range(1, len(data)):
         if data[i][0] != "":
-            spans.append(("SPAN", (0, start), (0, i - 1)))
-            start = i
-    spans.append(("SPAN", (0, start), (0, len(data) - 1)))
+            spans.append(("SPAN", (0, inicio), (0, i - 1)))
+            inicio = i
+    spans.append(("SPAN", (0, inicio), (0, len(data) - 1)))
 
     tabla.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
-        ("VALIGN", (0,1), (0,-1), "MIDDLE"),
-        ("ALIGN", (0,1), (0,-1), "CENTER"),
-        ("ALIGN", (2,1), (2,-1), "CENTER"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("VALIGN", (0, 1), (0, -1), "MIDDLE"),
+        ("ALIGN", (2, 1), (2, -1), "CENTER"),
     ] + spans))
 
     elementos.append(tabla)
 
-    elementos.append(Spacer(1, 14))
+    # ================== PUNTOS A MEJORAR ==================
+    elementos.append(Spacer(1, 18))
     elementos.append(Paragraph("<b>PUNTOS A MEJORAR</b>", styles["Heading2"]))
+    elementos.append(Spacer(1, 8))
 
     criticos = [f for f in filas if f["Calificación"] in (1, 3)]
-    if criticos:
-        for f in criticos:
-            elementos.append(
-                Paragraph(f"- {f['Seccion']} | {f['Tarea']} ({f['Calificación']})", styles["Normal"])
-            )
-    else:
-        elementos.append(Paragraph("Sin puntos críticos.", styles["Normal"]))
 
-    elementos.append(Spacer(1, 14))
+    if criticos:
+        data_pm = [[
+            Paragraph("<b>SECCIÓN</b>", estilo_normal),
+            Paragraph("<b>ITEM</b>", estilo_normal),
+            Paragraph("<b>CAL</b>", estilo_normal),
+            Paragraph("<b>OBSERVACIÓN</b>", estilo_normal),
+        ]]
+
+        ultima = None
+        for f in criticos:
+            if f["Seccion"] != ultima:
+                data_pm.append([
+                    Paragraph(f["Seccion"], estilo_seccion),
+                    Paragraph(f["Tarea"], estilo_normal),
+                    Paragraph(str(f["Calificación"]), estilo_calificacion(f["Calificación"])),
+                    Paragraph(f["Observaciones"] or "-", estilo_normal)
+                ])
+                ultima = f["Seccion"]
+            else:
+                data_pm.append([
+                    "",
+                    Paragraph(f["Tarea"], estilo_normal),
+                    Paragraph(str(f["Calificación"]), estilo_calificacion(f["Calificación"])),
+                    Paragraph(f["Observaciones"] or "-", estilo_normal)
+                ])
+
+        tabla_pm = Table(
+            data_pm,
+            colWidths=[95, 185, 50, 200],
+            repeatRows=1
+        )
+
+        spans_pm = []
+        inicio = 1
+        for i in range(1, len(data_pm)):
+            if data_pm[i][0] != "":
+                spans_pm.append(("SPAN", (0, inicio), (0, i - 1)))
+                inicio = i
+        spans_pm.append(("SPAN", (0, inicio), (0, len(data_pm) - 1)))
+
+        tabla_pm.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("ALIGN", (2, 1), (2, -1), "CENTER"),
+            ("VALIGN", (0, 1), (0, -1), "MIDDLE"),
+        ] + spans_pm))
+
+        elementos.append(tabla_pm)
+
+    else:
+        elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
+
+    # ================== REGISTRO FOTOGRÁFICO ==================
+    elementos.append(Spacer(1, 16))
     elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
+    elementos.append(Spacer(1, 8))
 
     for f in filas:
         if f["Foto"]:
@@ -351,7 +430,9 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
             elementos.append(Image(f["Foto"], width=180, height=130))
             elementos.append(Spacer(1, 10))
 
+    # ================== GENERAR PDF ==================
     doc.build(elementos)
+
 
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
