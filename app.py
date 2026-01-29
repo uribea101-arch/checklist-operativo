@@ -212,7 +212,6 @@ CHECKLIST = {
         "Papel higiénico en cabinas",
         "Jabón en dispensador",
         "Bolsas en papeleras",
-        "Aseo baño familiar",
         "Lavamanos funcionales",
         "Aseo lavamanos",
         "Olor"
@@ -290,8 +289,8 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
-        Paragraph("<b>CAL</b>", estilo_normal),
-        Paragraph("<b>OBS</b>", estilo_normal),
+        Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
+        Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
     ]]
 
     ultima = None
