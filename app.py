@@ -328,12 +328,26 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
             fila_inicio = len(data)
             seccion_actual = seccion
 
+            cal = f["Calificación"]
+
+            estilo_cal = ParagraphStyle(
+                name=f"Cal_{cal}",
+                parent=estilo_normal,
+                backColor=(
+                    colors.red if cal == 1 else
+                    colors.yellow if cal == 3 else
+                    None
+                ),
+                alignment=1
+            )
+
             data.append([
                 Paragraph(seccion, estilo_seccion),
                 Paragraph(f["Tarea"], estilo_normal),
-                Paragraph(str(f["Calificación"]), estilo_normal),
+                Paragraph(str(cal), estilo_cal),
                 Paragraph(f["Observaciones"] or "-", estilo_normal),
             ])
+
         else:
             data.append([
                 "",
@@ -370,8 +384,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     elementos.append(Paragraph("<b>PUNTOS A MEJORAR</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
-    criticos = [f for f in filas if f["Calificación"] == 1]
-
+    criticos = [f for f in filas if f["Calificación"] in (1, 3)]
     if criticos:
         for f in criticos:
             elementos.append(
