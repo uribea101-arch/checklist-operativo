@@ -571,8 +571,21 @@ if guardar:
         promedio = round(total / contador, 2)
         semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
 
-        pdf_path = f"Checklist_{fecha_archivo}.pdf"
-        generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
+       # Normalizar fecha para nombre de archivo
+fecha_archivo = fecha.replace(":", "-").replace(" ", "_")
 
-        with open(pdf_path, "rb") as f:
-            st.download_button("📄 Descargar PDF", f, file_name="Checklist.pdf")
+pdf_path = f"Checklist_{fecha_archivo}.pdf"
+
+try:
+    generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
+except Exception as e:
+    st.error("❌ Error al generar el PDF")
+    st.exception(e)
+    st.stop()
+
+with open(pdf_path, "rb") as f:
+    st.download_button(
+        "📄 Descargar PDF",
+        f,
+        file_name="Checklist.pdf"
+    )
