@@ -246,7 +246,10 @@ styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
 def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle,
+        Paragraph, Spacer, Image
+    )
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
@@ -266,7 +269,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     # ================== ENCABEZADO ==================
     elementos.append(Paragraph("<b>CHECKLIST BÁSICOS DEL SERVICIO</b>", styles["Title"]))
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 8))
     elementos.append(Paragraph(f"<b>Inspector:</b> {inspector}", styles["Normal"]))
     elementos.append(Paragraph(f"<b>Fecha:</b> {fecha}", styles["Normal"]))
     elementos.append(Spacer(1, 12))
@@ -280,9 +283,10 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     estilo_resultado = ParagraphStyle(
         name="Resultado",
+        parent=styles["Normal"],
+        textColor=color_semaforo,
         fontSize=10,
-        leading=12,
-        textColor=color_semaforo
+        alignment=1
     )
 
     elementos.append(Paragraph(f"<b>Promedio General:</b> {promedio}", styles["Normal"]))
@@ -294,19 +298,30 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         name="NormalTabla",
         fontSize=8,
         leading=10,
-        wordWrap="CJK"
+        alignment=0
     )
 
     estilo_seccion = ParagraphStyle(
         name="SeccionTabla",
         fontSize=9,
         leading=11,
-        alignment=1,      # Centrado horizontal
-        wordWrap="CJK",
+        alignment=1,
         backColor=colors.lightgrey
     )
 
-    # ================== CABECERA ==================
+    def estilo_calificacion(valor):
+        return ParagraphStyle(
+            name=f"Cal_{valor}",
+            parent=estilo_normal,
+            alignment=1,              # 👈 SIEMPRE CENTRADO
+            backColor=(
+                colors.red if valor == 1 else
+                colors.yellow if valor == 3 else
+                None
+            )
+        )
+
+    # ================== CABECERA TABLA ==================
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
         Paragraph("<b>ITEM</b>", estilo_normal),
@@ -314,50 +329,32 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
     ]]
 
-    # ================== FILAS ==================
-    seccion_actual = None
-    fila_inicio = 1
-    spans = []
+    ultima_seccion = None
+    inicio_merge = 1
 
+    # ================== FILAS ==================
     for f in filas:
         seccion = f["Seccion"]
+        tarea = Paragraph(f["Tarea"], estilo_normal)
+        cal_valor = f["Calificación"]
+        cal = Paragraph(str(cal_valor), estilo_calificacion(cal_valor))
+        obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
 
-        if seccion != seccion_actual:
-            if seccion_actual is not None:
-                spans.append(("SPAN", (0, fila_inicio), (0, len(data) - 1)))
-            fila_inicio = len(data)
-            seccion_actual = seccion
-
-            cal = f["Calificación"]
-
-            estilo_cal = ParagraphStyle(
-                name=f"Cal_{cal}",
-                parent=estilo_normal,
-                backColor=(
-                    colors.red if cal == 1 else
-                    colors.yellow if cal == 3 else
-                    None
-                ),
-                alignment=1
-            )
-
+        if seccion != ultima_seccion:
             data.append([
                 Paragraph(seccion, estilo_seccion),
-                Paragraph(f["Tarea"], estilo_normal),
-                Paragraph(str(cal), estilo_cal),
-                Paragraph(f["Observaciones"] or "-", estilo_normal),
+                tarea,
+                cal,
+                obs
             ])
-
+            ultima_seccion = seccion
         else:
             data.append([
                 "",
-                Paragraph(f["Tarea"], estilo_normal),
-                Paragraph(str(f["Calificación"]), estilo_normal),
-                Paragraph(f["Observaciones"] or "-", estilo_normal),
+                tarea,
+                cal,
+                obs
             ])
-
-    # Último merge
-    spans.append(("SPAN", (0, fila_inicio), (0, len(data) - 1)))
 
     # ================== TABLA ==================
     tabla = Table(
@@ -366,57 +363,61 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         repeatRows=1
     )
 
+    spans = []
+    fila_inicio = 1
+    seccion_actual = None
+
+    for i in range(1, len(data)):
+        if data[i][0] != "":
+            if seccion_actual is not None:
+                spans.append(("SPAN", (0, fila_inicio), (0, i - 1)))
+            seccion_actual = data[i][0]
+            fila_inicio = i
+
+    spans.append(("SPAN", (0, fila_inicio), (0, len(data) - 1)))
+
     tabla.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
 
-        # Centrado vertical SOLO la columna sección
-        ("VALIGN", (0,1), (0,-1), "MIDDLE"),
-        ("VALIGN", (1,1), (-1,-1), "TOP"),
+        # 👉 CENTRADO PERFECTO DE SECCIÓN
+        ("VALIGN", (0, 1), (0, -1), "MIDDLE"),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
 
-        ("ALIGN", (2,1), (2,-1), "CENTER"),
+        # 👉 CALIFICACIÓN SIEMPRE CENTRADA
+        ("ALIGN", (2, 1), (2, -1), "CENTER"),
+        ("VALIGN", (2, 1), (2, -1), "MIDDLE"),
+
+        ("VALIGN", (1, 1), (-1, -1), "TOP"),
     ] + spans))
 
     elementos.append(tabla)
 
-    # ================== PUNTOS CRÍTICOS ==================
+    # ================== PUNTOS A MEJORAR ==================
     elementos.append(Spacer(1, 18))
     elementos.append(Paragraph("<b>PUNTOS A MEJORAR</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
     criticos = [f for f in filas if f["Calificación"] in (1, 3)]
+
     if criticos:
         for f in criticos:
-            elementos.append(
-                Paragraph(
-                    f"- {f['Seccion']} | {f['Tarea']}",
-                    styles["Normal"]
-                )
-            )
+            texto = f"- {f['Seccion']} | {f['Tarea']} (Calificación: {f['Calificación']})"
+            elementos.append(Paragraph(texto, styles["Normal"]))
     else:
-        elementos.append(
-            Paragraph("No se registraron puntos críticos.", styles["Normal"])
-        )
+        elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
 
     # ================== REGISTRO FOTOGRÁFICO ==================
-    elementos.append(Spacer(1, 18))
+    elementos.append(Spacer(1, 16))
     elementos.append(Paragraph("<b>REGISTRO FOTOGRÁFICO</b>", styles["Heading2"]))
     elementos.append(Spacer(1, 8))
 
-    fotos_usadas = set()
-
     for f in filas:
-        if f["Foto"] and f["Foto"] not in fotos_usadas:
-            fotos_usadas.add(f["Foto"])
+        if f["Foto"]:
             elementos.append(
-                Paragraph(
-                    f"{f['Seccion']} - {f['Tarea']}",
-                    styles["Normal"]
-                )
+                Paragraph(f"{f['Seccion']} - {f['Tarea']}", styles["Normal"])
             )
-            elementos.append(
-                Image(f["Foto"], width=180, height=130)
-            )
+            elementos.append(Image(f["Foto"], width=180, height=130))
             elementos.append(Spacer(1, 10))
 
     # ================== GENERAR PDF ==================
