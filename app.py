@@ -370,11 +370,17 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     if criticos:
         data_pm = [[
-            Paragraph("<b>SECCIÓN</b>", estilo_normal),
-            Paragraph("<b>ITEM</b>", estilo_normal),
-            Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
-            Paragraph("<b>OBSERVACIÓN</b>", estilo_normal),
-        ]]
+    Paragraph("<b>SECCIÓN</b>", estilo_normal),
+    Paragraph("<b>ITEM</b>", estilo_normal),
+    Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
+    Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
+]]
+
+tabla_pm = Table(
+    data_pm,
+    colWidths=[95, 165, 85, 185],  # 👈 más ancho para CALIFICACIÓN
+    repeatRows=1
+)
    
         ultima = None
         for f in criticos:
