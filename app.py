@@ -459,32 +459,32 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         elementos.append(Paragraph("No se adjuntaron fotografías.", styles["Normal"]))
 
 def dibujar_semaforo(canvas, doc):
-    canvas.saveState()
+        canvas.saveState()
 
-    if "VERDE" in semaforo:
-        color = colors.green
-        texto = "VERDE"
-    elif "AMARILLO" in semaforo:
-        color = colors.orange
-        texto = "AMARILLO"
-    else:
-        color = colors.red
-        texto = "ROJO"
+        if "VERDE" in semaforo:
+            color = colors.green
+            texto = "VERDE"
+        elif "AMARILLO" in semaforo:
+            color = colors.orange
+            texto = "AMARILLO"
+        else:
+            color = colors.red
+            texto = "ROJO"
 
-    x = doc.leftMargin
-    y = doc.height + doc.topMargin - 95
+        x = doc.leftMargin
+        y = doc.height + doc.topMargin - 95
 
-    canvas.setFillColor(color)
-    canvas.circle(x + 55, y, 6, fill=1)
+        canvas.setFillColor(color)
+        canvas.circle(x + 55, y, 6, fill=1)
 
-    canvas.setFillColor(colors.black)
-    canvas.setFont("Helvetica-Bold", 9)
-    canvas.drawString(x + 70, y - 3, f"Estado: {texto}")
+        canvas.setFillColor(colors.black)
+        canvas.setFont("Helvetica-Bold", 9)
+        canvas.drawString(x + 70, y - 3, f"Estado: {texto}")
 
-    canvas.restoreState()
+        canvas.restoreState()
 
+    # ✅ ESTO ES LO MÁS IMPORTANTE
     doc.build(elementos, onFirstPage=dibujar_semaforo)
-
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
     c_inspector, c_fecha = st.columns([2, 1])
@@ -567,27 +567,26 @@ with st.form("checklist"):
 if guardar:
     if error or completados < total_items:
         st.error("❌ Checklist incompleto o con errores")
-    else:
-        promedio = round(total / contador, 2)
-        semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
+        st.stop()
 
-       # Normalizar fecha para nombre de archivo
-fecha_archivo = fecha.replace(":", "-").replace(" ", "_")
+    promedio = round(total / contador, 2)
+    semaforo = "🟢 VERDE" if promedio >= 4 else "🟡 AMARILLO" if promedio >= 3 else "🔴 ROJO"
 
-fecha_archivo = fecha_dt.strftime("%Y-%m-%d_%H-%M")
-pdf_path = f"pdfs/Checklist_{fecha_archivo}.pdf"
+    os.makedirs("pdfs", exist_ok=True)
 
+    fecha_archivo = fecha_dt.strftime("%Y-%m-%d_%H-%M")
+    pdf_path = f"pdfs/Checklist_{fecha_archivo}.pdf"
 
-try:
-    generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
-except Exception as e:
-    st.error("❌ Error al generar el PDF")
-    st.exception(e)
-    st.stop()
+    try:
+        generar_pdf(pdf_path, inspector, fecha, filas, promedio, semaforo)
+    except Exception as e:
+        st.error("❌ Error al generar el PDF")
+        st.exception(e)
+        st.stop()
 
-with open(pdf_path, "rb") as f:
-    st.download_button(
-        "📄 Descargar PDF",
-        f,
-        file_name="Checklist.pdf"
-    )
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            "📄 Descargar PDF",
+            f,
+            file_name="Checklist.pdf"
+        )
