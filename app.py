@@ -394,6 +394,56 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos.append(tabla)
 
+      # ================== PUNTOS A MEJORAR ==================
+    elementos.append(Spacer(1, 18))
+    elementos.append(Paragraph("PUNTOS A MEJORAR", styles["Heading2"]))
+    elementos.append(Spacer(1, 8))
+
+    criticos = [f for f in filas if f["Calificación"] in (1, 3)]
+
+    if criticos:
+        data_pm = [[
+            Paragraph("<b>SECCIÓN</b>", estilo_normal),
+            Paragraph("<b>ITEM</b>", estilo_normal),
+            Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
+            Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
+        ]]
+
+        ultima_seccion = None
+
+        for f in criticos:
+            seccion = f["Seccion"]
+            tarea = Paragraph(f["Tarea"], estilo_normal)
+            cal = Paragraph(
+                texto_calificacion(f["Calificación"]),
+                estilo_calificacion(f["Calificación"])
+            )
+            obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
+
+            if seccion != ultima_seccion:
+                data_pm.append([Paragraph(seccion, estilo_seccion), tarea, cal, obs])
+                ultima_seccion = seccion
+            else:
+                data_pm.append(["", tarea, cal, obs])
+
+        tabla_pm = Table(
+            data_pm,
+            colWidths=[100, 190, 85, 165],
+            repeatRows=1
+        )
+
+        tabla_pm.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E9EEF3")),
+            ("ALIGN", (2, 1), (2, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("VALIGN", (1, 1), (-1, -1), "TOP"),
+        ]))
+
+        elementos.append(tabla_pm)
+    else:
+        elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
+
     # ================== REGISTRO FOTOGRÁFICO ==================
     elementos.append(Spacer(1, 18))
     elementos.append(Paragraph("REGISTRO FOTOGRÁFICO", styles["Heading2"]))
