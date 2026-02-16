@@ -445,30 +445,42 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
 
     # ================== REGISTRO FOTOGRÁFICO ==================
+
     elementos.append(Spacer(1, 18))
     elementos.append(Paragraph("REGISTRO FOTOGRÁFICO", styles["Heading2"]))
-    elementos.append(Spacer(1, 8))
+    elementos.append(Spacer(1, 12))
 
-    imagenes = []
-    fila_img = []
+    hay_fotos = False
 
     for f in filas:
-        if f.get("Foto"):   # 🔥 corrección segura
-            fila_img.append(Image(f["Foto"], width=200, height=150))
-            if len(fila_img) == 2:
-                imagenes.append(fila_img)
-                fila_img = []
+        if f.get("Foto"):
 
-    if fila_img:
-        imagenes.append(fila_img)
+            hay_fotos = True
 
-    if imagenes:
-        elementos.append(Table(imagenes, hAlign="CENTER"))
-    else:
+            try:
+                # Imagen centrada
+                img = Image(f["Foto"], width=350, height=250)
+                img.hAlign = "CENTER"
+                elementos.append(img)
+                elementos.append(Spacer(1, 8))
+
+                # Información debajo de la imagen
+                detalle = f"""
+                <b>Sección:</b> {f["Seccion"]}<br/>
+                <b>Ítem:</b> {f["Tarea"]}<br/>
+                <b>Comentario:</b> {f["Observaciones"] or "Sin comentario"}
+                """
+
+                elementos.append(Paragraph(detalle, styles["Normal"]))
+                elementos.append(Spacer(1, 18))
+
+            except:
+                pass
+
+    if not hay_fotos:
         elementos.append(Paragraph("No se adjuntaron fotografías.", styles["Normal"]))
 
     doc.build(elementos)
-
 
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
