@@ -250,6 +250,7 @@ CHECKLIST = {
 styles = getSampleStyleSheet()
 
 # ---------------- PDF ----------------
+# ---------------- PDF ----------------
 def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.pagesizes import letter
@@ -316,7 +317,6 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     elementos.append(Paragraph("CHECKLIST BÁSICOS DEL SERVICIO", titulo))
     elementos.append(Spacer(1, 6))
 
-    # Color según semáforo
     if "VERDE" in semaforo:
         color_estado = colors.green
     elif "AMARILLO" in semaforo:
@@ -326,11 +326,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     estado_paragraph = Paragraph(
         f"<b>{semaforo}</b>",
-        ParagraphStyle(
-            "EstadoColor",
-            fontSize=9,
-            textColor=color_estado
-        )
+        ParagraphStyle("EstadoColor", fontSize=9, textColor=color_estado)
     )
 
     info_tabla = Table([
@@ -347,6 +343,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos.append(info_tabla)
     elementos.append(Spacer(1, 14))
+
     # ================== TABLA PRINCIPAL ==================
     data = [[
         Paragraph("<b>SECCIÓN</b>", estilo_normal),
@@ -372,11 +369,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
         else:
             data.append(["", tarea, cal, obs])
 
-    tabla = Table(
-        data,
-        colWidths=[100, 190, 85, 165],
-        repeatRows=1
-    )
+    tabla = Table(data, colWidths=[100, 190, 85, 165], repeatRows=1)
 
     spans = []
     fila_inicio = 1
@@ -401,56 +394,6 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
 
     elementos.append(tabla)
 
-    # ================== PUNTOS A MEJORAR ==================
-    elementos.append(Spacer(1, 18))
-    elementos.append(Paragraph("PUNTOS A MEJORAR", styles["Heading2"]))
-    elementos.append(Spacer(1, 8))
-
-    criticos = [f for f in filas if f["Calificación"] in (1, 3)]
-
-    if criticos:
-        data_pm = [[
-            Paragraph("<b>SECCIÓN</b>", estilo_normal),
-            Paragraph("<b>ITEM</b>", estilo_normal),
-            Paragraph("<b>CALIFICACIÓN</b>", estilo_normal),
-            Paragraph("<b>OBSERVACIONES</b>", estilo_normal),
-        ]]
-
-        ultima_seccion = None
-
-        for f in criticos:
-            seccion = f["Seccion"]
-            tarea = Paragraph(f["Tarea"], estilo_normal)
-            cal = Paragraph(
-                texto_calificacion(f["Calificación"]),
-                estilo_calificacion(f["Calificación"])
-            )
-            obs = Paragraph(f["Observaciones"] or "-", estilo_normal)
-
-            if seccion != ultima_seccion:
-                data_pm.append([Paragraph(seccion, estilo_seccion), tarea, cal, obs])
-                ultima_seccion = seccion
-            else:
-                data_pm.append(["", tarea, cal, obs])
-
-        tabla_pm = Table(
-            data_pm,
-            colWidths=[100, 190, 85, 165],
-            repeatRows=1
-        )
-
-        tabla_pm.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E9EEF3")),
-            ("ALIGN", (2, 1), (2, -1), "CENTER"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("VALIGN", (1, 1), (-1, -1), "TOP"),
-        ]))
-
-        elementos.append(tabla_pm)
-    else:
-        elementos.append(Paragraph("No se registraron puntos críticos.", styles["Normal"]))
-
     # ================== REGISTRO FOTOGRÁFICO ==================
     elementos.append(Spacer(1, 18))
     elementos.append(Paragraph("REGISTRO FOTOGRÁFICO", styles["Heading2"]))
@@ -460,7 +403,7 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     fila_img = []
 
     for f in filas:
-        if f["Foto"]:
+        if f.get("Foto"):   # 🔥 corrección segura
             fila_img.append(Image(f["Foto"], width=200, height=150))
             if len(fila_img) == 2:
                 imagenes.append(fila_img)
@@ -474,30 +417,9 @@ def generar_pdf(ruta_pdf, inspector, fecha, filas, promedio, semaforo):
     else:
         elementos.append(Paragraph("No se adjuntaron fotografías.", styles["Normal"]))
 
-    def dibujar_semaforo(canvas, doc):
-        canvas.saveState()
-
-        if "VERDE" in semaforo:
-            color = colors.green
-            texto = "VERDE"
-        elif "AMARILLO" in semaforo:
-            color = colors.orange
-            texto = "AMARILLO"
-        else:
-            color = colors.red
-            texto = "ROJO"
-
-        x = doc.leftMargin + 380
-        y = doc.height + doc.topMargin - 55
-
-        canvas.setFillColor(color)
-        canvas.circle(x, y, 6, fill=1)
-
-        canvas.restoreState()
+    doc.build(elementos)
 
 
-    # ✅ ESTO ES LO MÁS IMPORTANTE
-    doc.build(elementos, onFirstPage=dibujar_semaforo)
 # ---------------- FORMULARIO ----------------
 with st.form("checklist"):
     c_inspector, c_fecha = st.columns([2, 1])
@@ -506,10 +428,7 @@ with st.form("checklist"):
         inspector = st.text_input("Nombre del inspector")
 
     with c_fecha:
-        fecha_dt = st.datetime_input(
-            "Fecha y hora",
-            value=datetime.now()
-        )
+        fecha_dt = st.datetime_input("Fecha y hora", value=datetime.now())
 
     fecha = fecha_dt.strftime("%Y-%m-%d %H:%M")
 
@@ -550,42 +469,23 @@ with st.form("checklist"):
                     key=f"foto_{seccion}_{item}"
                 )
 
-            if cal == "Seleccione...":
-                error = True
-                st.error("Seleccione calificación")
-                continue
-
             puntaje = CALIFICACIONES[cal]
             completados += 1
 
-            # 🟡 Observación obligatoria si es REGULAR
             if puntaje == 3 and not obs.strip():
                 error = True
                 st.warning("🟡 Observación obligatoria cuando es Regular")
 
-            # 🔴 Foto obligatoria solo si es MALO
-            ruta_foto = ""
             if puntaje == 1 and not foto:
                 error = True
                 st.warning("🔴 Foto obligatoria cuando es Malo")
-
-            # 💾 Guardar foto si existe (BUENO / REGULAR / MALO)
-            if foto:
-                import os, uuid
-                os.makedirs("fotos", exist_ok=True)
-                nombre = uuid.uuid4().hex
-                ruta_foto = os.path.abspath(
-                    f"fotos/{fecha.replace(':','-')}_{nombre}.jpg"
-                )
-                with open(ruta_foto, "wb") as f:
-                    f.write(foto.getbuffer())
 
             filas.append({
                 "Seccion": seccion,
                 "Tarea": item,
                 "Calificación": puntaje,
                 "Observaciones": obs,
-                "Foto": ruta_foto
+                "Foto": foto   # 🔥 guardamos el objeto temporal
             })
 
             total += puntaje
